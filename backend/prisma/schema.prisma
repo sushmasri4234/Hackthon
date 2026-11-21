@@ -1,0 +1,359 @@
+// CertiFlow – Prisma Schema
+// Pragati Skills Mission Certificate Issuance Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  TRAINING_CENTRE
+  DISTRICT_OFFICER
+  QUALITY_TEAM
+  STATE_OFFICE
+  CANDIDATE
+}
+
+enum BatchStatus {
+  DRAFT
+  SUBMITTED
+  DISTRICT_REVIEW
+  QUALITY_REVIEW
+  STATE_REVIEW
+  APPROVED
+  REJECTED
+  RETURNED
+  CANCELLED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+enum CertificateStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum NotificationStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  RETRYING
+}
+
+enum NotificationChannel {
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+enum AuditAction {
+  BATCH_CREATED
+  BATCH_UPLOAD_SUCCESS
+  BATCH_UPLOAD_FAILED
+  BATCH_VALIDATION_FAILED
+  BATCH_SUBMITTED
+  BATCH_RESUBMITTED
+  DISTRICT_APPROVED
+  DISTRICT_REJECTED
+  DISTRICT_RETURNED
+  QUALITY_REVIEWED
+  STATE_APPROVED
+  STATE_REJECTED
+  STATE_RETURNED
+  CERTIFICATE_GENERATED
+  CERTIFICATE_CANCELLED
+  NOTIFICATION_SENT
+  NOTIFICATION_FAILED
+  NOTIFICATION_RETRIED
+  ESCALATION_CREATED
+  ESCALATION_RESOLVED
+  USER_LOGIN
+  USER_LOGOUT
+  BATCH_CANCELLED
+}
+
+enum EntityType {
+  BATCH
+  CANDIDATE
+  CERTIFICATE
+  NOTIFICATION
+  USER
+  ESCALATION
+  BATCH_SUBMISSION
+}
+
+// ─────────────────────────────────────────────
+// CORE MODELS
+// ─────────────────────────────────────────────
+
+model District {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  stateCode       String           @default("MH")
+  createdAt       DateTime         @default(now())
+  trainingCentres TrainingCentre[]
+  users           User[]
+  Batch           Batch[]
+}
+
+model TrainingCentre {
+  id         String   @id @default(uuid())
+  name       String
+  code       String   @unique
+  districtId String
+  district   District @relation(fields: [districtId], references: [id])
+  createdAt  DateTime @default(now())
+  users      User[]
+  batches    Batch[]
+}
+
+model User {
+  id               String         @id @default(uuid())
+  name             String
+  email            String         @unique
+  passwordHash     String
+  role             UserRole
+  trainingCentreId String?
+  trainingCentre   TrainingCentre? @relation(fields: [trainingCentreId], references: [id])
+  districtId       String?
+  district         District?      @relation(fields: [districtId], references: [id])
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relations
+  uploadedBatches    Batch[]             @relation("BatchUploader")
+  districtApprovals  DistrictApproval[]
+  qualityReviews     QualityReview[]
+  stateApprovals     StateApproval[]
+  submittedBatches   BatchSubmission[]   @relation("SubmittedBy")
+  auditLogs          AuditLog[]
+  cancelledCerts     Certificate[]       @relation("CancelledBy")
+  notifications      Escalation[]        @relation("EscalationNotified")
+
+  @@index([email])
+  @@index([role])
+}
+
+model Batch {
+  id               String         @id @default(uuid())
+  trainingCentreId String
+  trainingCentre   TrainingCentre @relation(fields: [trainingCentreId], references: [id])
+  districtId       String
+  district         District       @relation(fields: [districtId], references: [id])
+  uploadedById     String
+  uploadedBy       User           @relation("BatchUploader", fields: [uploadedById], references: [id])
+  courseName       String
+  batchName        String
+  status           BatchStatus    @default(DRAFT)
+  totalCandidates  Int            @default(0)
+  submissionCount  Int            @default(0)
+  notes            String?
+  isLargeBatch     Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relations
+  candidates    Candidate[]
+  submissions   BatchSubmission[]
+  certificates  Certificate[]
+  escalations   Escalation[]
+  auditLogs     AuditLog[]       @relation("BatchAudit")
+
+  @@index([status])
+  @@index([trainingCentreId])
+  @@index([districtId])
+  @@index([createdAt])
+}
+
+model Candidate {
+  id               String    @id @default(uuid())
+  batchId          String
+  batch            Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  candidateExtId   String    // External candidate ID from spreadsheet
+  fullName         String
+  phone            String
+  email            String?
+  courseName       String
+  trainingCentre   String
+  district         String
+  marks            Float
+  completionDate   DateTime
+  status           String    @default("PENDING") // PENDING, CERTIFIED, REJECTED
+  createdAt        DateTime  @default(now())
+
+  // Certificate – one per candidate
+  certificate      Certificate?
+
+  @@unique([batchId, candidateExtId])
+  @@index([batchId])
+  @@index([phone])
+}
+
+model BatchSubmission {
+  id            String   @id @default(uuid())
+  batchId       String
+  batch         Batch    @relation(fields: [batchId], references: [id])
+  submittedById String
+  submittedBy   User     @relation("SubmittedBy", fields: [submittedById], references: [id])
+  submissionNum Int      // 1 = first, 2 = resubmission, etc.
+  notes         String?
+  submittedAt   DateTime @default(now())
+
+  // Decisions on this specific submission
+  districtApprovals DistrictApproval[]
+  qualityReview     QualityReview?
+  stateApproval     StateApproval?
+
+  @@index([batchId])
+}
+
+model DistrictApproval {
+  id               String           @id @default(uuid())
+  batchSubmissionId String
+  batchSubmission  BatchSubmission  @relation(fields: [batchSubmissionId], references: [id])
+  officerId        String
+  officer          User             @relation(fields: [officerId], references: [id])
+  decision         ApprovalDecision
+  reason           String?
+  decidedAt        DateTime         @default(now())
+
+  // CRITICAL: One officer can approve a submission only once
+  @@unique([batchSubmissionId, officerId])
+  @@index([batchSubmissionId])
+  @@index([officerId])
+}
+
+model QualityReview {
+  id               String           @id @default(uuid())
+  batchSubmissionId String           @unique
+  batchSubmission  BatchSubmission  @relation(fields: [batchSubmissionId], references: [id])
+  reviewerId       String
+  reviewer         User             @relation(fields: [reviewerId], references: [id])
+  decision         ApprovalDecision
+  notes            String?
+  flags            Json?            // Flagged candidate IDs and reasons
+  reviewedAt       DateTime         @default(now())
+
+  @@index([batchSubmissionId])
+}
+
+model StateApproval {
+  id               String           @id @default(uuid())
+  batchSubmissionId String           @unique
+  batchSubmission  BatchSubmission  @relation(fields: [batchSubmissionId], references: [id])
+  approvedById     String
+  approvedBy       User             @relation(fields: [approvedById], references: [id])
+  decision         ApprovalDecision
+  reason           String?
+  decidedAt        DateTime         @default(now())
+
+  @@index([batchSubmissionId])
+}
+
+model Certificate {
+  id                String            @id @default(uuid())
+  certificateNumber String            @unique // PSM-YYYY-XXXXXXXX
+  candidateId       String            @unique // One cert per candidate
+  candidate         Candidate         @relation(fields: [candidateId], references: [id])
+  batchId           String
+  batch             Batch             @relation(fields: [batchId], references: [id])
+  status            CertificateStatus @default(ACTIVE)
+  pdfPath           String?
+  qrCodeData        String?
+  generatedAt       DateTime          @default(now())
+  cancelledAt       DateTime?
+  cancelledById     String?
+  cancelledBy       User?             @relation("CancelledBy", fields: [cancelledById], references: [id])
+  cancellationReason String?
+
+  // Notifications for this certificate
+  notifications Notification[]
+
+  @@index([certificateNumber])
+  @@index([status])
+  @@index([batchId])
+}
+
+model Notification {
+  id            String              @id @default(uuid())
+  certificateId String
+  certificate   Certificate         @relation(fields: [certificateId], references: [id])
+  candidateId   String
+  channel       NotificationChannel @default(WHATSAPP)
+  status        NotificationStatus  @default(PENDING)
+  phoneNumber   String
+  attemptCount  Int                 @default(0)
+  maxAttempts   Int                 @default(3)
+  lastAttemptAt DateTime?
+  deliveredAt   DateTime?
+  errorMessage  String?
+  jobId         String?             // BullMQ job ID for idempotency
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([certificateId, channel]) // One WhatsApp notification per certificate
+  @@index([status])
+  @@index([certificateId])
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id])
+  userRole    UserRole?
+  action      AuditAction
+  entityType  EntityType
+  entityId    String
+  prevStatus  String?
+  newStatus   String?
+  reason      String?
+  metadata    Json?
+  batchId     String?
+  batch       Batch?      @relation("BatchAudit", fields: [batchId], references: [id])
+  createdAt   DateTime    @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([batchId])
+}
+
+model Escalation {
+  id              String    @id @default(uuid())
+  batchId         String
+  batch           Batch     @relation(fields: [batchId], references: [id])
+  reason          String
+  escalatedAt     DateTime  @default(now())
+  resolvedAt      DateTime?
+  notifiedUserId  String?
+  notifiedUser    User?     @relation("EscalationNotified", fields: [notifiedUserId], references: [id])
+  metadata        Json?
+
+  @@index([batchId])
+  @@index([escalatedAt])
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid())
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  @@index([processedAt])
+  @@index([createdAt])
+}
