@@ -86,17 +86,22 @@ export async function validateExcelUpload(buffer: Buffer): Promise<ValidationRes
   try {
     await workbook.xlsx.load(buffer as any);
   } catch {
-    return {
-      valid: false,
-      candidates: [],
-      errors: [{
-        row: 0,
-        field: 'file',
-        value: undefined,
-        error: 'Cannot read file. Ensure it is a valid .xlsx file.',
-        suggestion: 'Save the file as Excel Workbook (.xlsx) format and re-upload.',
-      }],
-    };
+    try {
+      const { Readable } = await import('stream');
+      await workbook.csv.read(Readable.from(buffer));
+    } catch {
+      return {
+        valid: false,
+        candidates: [],
+        errors: [{
+          row: 0,
+          field: 'file',
+          value: undefined,
+          error: 'Cannot read file. Ensure it is a valid .xlsx or .csv file.',
+          suggestion: 'Save the file as Excel Workbook (.xlsx) or CSV (.csv) format and re-upload.',
+        }],
+      };
+    }
   }
 
   const worksheet = workbook.worksheets[0];
