@@ -24,6 +24,31 @@ export function setupRoutes(app: Express): void {
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/districts', districtsRouter);
 
+  // ── Global Audit Route ───────────────────────────────────────────────────
+  app.get('/api/audit', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { batchId, action, limit } = req.query;
+      const where: any = {};
+      if (batchId && batchId !== 'all') where.batchId = batchId as string;
+      if (action && action !== 'all') where.action = action as string;
+      const take = limit ? parseInt(limit as string, 10) : 200;
+
+      const logs = await prisma.auditLog.findMany({
+        where,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, role: true } },
+          batch: { select: { id: true, batchName: true } },
+        },
+      });
+
+      res.json({ data: logs, auditLog: logs, total: logs.length });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // ── Public verify shorthand (for QR code URLs) ────────────────────────────
   // e.g. GET /api/verify/PSM-2024-00012345
   app.get('/api/verify/:certNumber', async (req: Request, res: Response, next: NextFunction) => {

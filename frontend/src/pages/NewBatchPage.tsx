@@ -8,6 +8,13 @@ import { Upload, FileText, AlertCircle, CheckCircle, ChevronRight, X, ArrowRight
 interface District {
   id: string;
   name: string;
+  stateCode?: string;
+  stateName?: string;
+}
+
+interface StateOption {
+  code: string;
+  name: string;
 }
 
 interface ValidationError {
@@ -25,7 +32,9 @@ export default function NewBatchPage() {
 
   const [step, setStep] = useState<'info' | 'upload' | 'review'>('info');
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [statesList, setStatesList] = useState<StateOption[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
+  const [selectedState, setSelectedState] = useState('MH');
   const [loading, setLoading] = useState(false);
 
   // Form fields
@@ -46,11 +55,24 @@ export default function NewBatchPage() {
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
+    API.get('/states').then((r) => {
+      setStatesList(r.data);
+      if (r.data.length > 0) setSelectedState(r.data[0].code);
+    }).catch(() => {});
+
     API.get('/districts').then((r) => {
       setDistricts(r.data);
       if (r.data.length > 0 && !districtId) setDistrictId(r.data[0].id);
     }).catch(() => {});
   }, []);
+
+  const filteredDistricts = districts.filter(d => !selectedState || d.stateCode === selectedState);
+
+  useEffect(() => {
+    if (filteredDistricts.length > 0) {
+      setDistrictId(filteredDistricts[0].id);
+    }
+  }, [selectedState, districts]);
 
   const handleCreateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,14 +219,38 @@ export default function NewBatchPage() {
                 required
               />
             </div>
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>District Jurisdiction *</label>
-              <select className="form-input" value={districtId} onChange={(e) => setDistrictId(e.target.value)} required>
-                <option value="">Select District...</option>
-                {districts.map((d: District) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600 }}>State / UT *</label>
+                <select
+                  className="form-input"
+                  value={selectedState}
+                  onChange={(e) => setSelectedState(e.target.value)}
+                  required
+                >
+                  {statesList.map((st) => (
+                    <option key={st.code} value={st.code}>{st.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600 }}>District Jurisdiction *</label>
+                <select
+                  className="form-input"
+                  value={districtId}
+                  onChange={(e) => setDistrictId(e.target.value)}
+                  required
+                >
+                  {filteredDistricts.length === 0 ? (
+                    <option value="">No districts listed</option>
+                  ) : (
+                    filteredDistricts.map((d: District) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))
+                  )}
+                </select>
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: 600 }}>Notes / Remarks (Optional)</label>

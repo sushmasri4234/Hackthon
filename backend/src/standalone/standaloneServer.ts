@@ -107,18 +107,89 @@ app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ── In-Memory Database ────────────────────────────────────────────────────────
+// ── Nationwide States & Districts Database ──────────────────────────────────
+const states = [
+  { code: 'MH', name: 'Maharashtra' },
+  { code: 'DL', name: 'Delhi NCR' },
+  { code: 'KA', name: 'Karnataka' },
+  { code: 'TS', name: 'Telangana' },
+  { code: 'TN', name: 'Tamil Nadu' },
+  { code: 'UP', name: 'Uttar Pradesh' },
+  { code: 'GJ', name: 'Gujarat' },
+  { code: 'RJ', name: 'Rajasthan' },
+  { code: 'WB', name: 'West Bengal' },
+  { code: 'KL', name: 'Kerala' },
+  { code: 'MP', name: 'Madhya Pradesh' },
+  { code: 'PB', name: 'Punjab' },
+  { code: 'HR', name: 'Haryana' },
+  { code: 'AP', name: 'Andhra Pradesh' },
+  { code: 'BR', name: 'Bihar' },
+  { code: 'OD', name: 'Odisha' },
+];
+
 const districts = [
-  { id: 'dist-pune', name: 'Pune', stateCode: 'MH', trainingCentres: [{ id: 'tc-pune-001', name: 'Pune Skill Development Centre', code: 'TC-PUNE-001' }] },
-  { id: 'dist-nashik', name: 'Nashik', stateCode: 'MH', trainingCentres: [{ id: 'tc-nsk-001', name: 'Nashik Vocational Institute', code: 'TC-NSK-001' }] },
-  { id: 'dist-aurangabad', name: 'Aurangabad', stateCode: 'MH', trainingCentres: [{ id: 'tc-aur-001', name: 'Marathwada Skill Hub', code: 'TC-AUR-001' }] },
+  // Maharashtra
+  { id: 'dist-pune', name: 'Pune', stateCode: 'MH', stateName: 'Maharashtra', trainingCentres: [{ id: 'tc-pune-001', name: 'Pune Skill Development Centre', code: 'TC-PUNE-001' }] },
+  { id: 'dist-nashik', name: 'Nashik', stateCode: 'MH', stateName: 'Maharashtra', trainingCentres: [{ id: 'tc-nsk-001', name: 'Nashik Vocational Institute', code: 'TC-NSK-001' }] },
+  { id: 'dist-mumbai', name: 'Mumbai City', stateCode: 'MH', stateName: 'Maharashtra', trainingCentres: [{ id: 'tc-mum-001', name: 'Mumbai Metro Skilling Hub', code: 'TC-MUM-001' }] },
+  { id: 'dist-nagpur', name: 'Nagpur', stateCode: 'MH', stateName: 'Maharashtra', trainingCentres: [{ id: 'tc-nag-001', name: 'Vidarbha Technical Institute', code: 'TC-NAG-001' }] },
+  { id: 'dist-aurangabad', name: 'Chhatrapati Sambhajinagar', stateCode: 'MH', stateName: 'Maharashtra', trainingCentres: [{ id: 'tc-aur-001', name: 'Marathwada Skill Hub', code: 'TC-AUR-001' }] },
+  { id: 'dist-thane', name: 'Thane', stateCode: 'MH', stateName: 'Maharashtra', trainingCentres: [{ id: 'tc-thn-001', name: 'Thane Industrial Training Centre', code: 'TC-THN-001' }] },
+
+  // Karnataka
+  { id: 'dist-bengaluru', name: 'Bengaluru Urban', stateCode: 'KA', stateName: 'Karnataka', trainingCentres: [{ id: 'tc-blr-001', name: 'Bengaluru Tech Skill Centre', code: 'TC-BLR-001' }] },
+  { id: 'dist-mysuru', name: 'Mysuru', stateCode: 'KA', stateName: 'Karnataka', trainingCentres: [{ id: 'tc-mys-001', name: 'Mysuru Heritage Skill Academy', code: 'TC-MYS-001' }] },
+  { id: 'dist-hubballi', name: 'Hubballi-Dharwad', stateCode: 'KA', stateName: 'Karnataka', trainingCentres: [{ id: 'tc-hub-001', name: 'North Karnataka Vocational Hub', code: 'TC-HUB-001' }] },
+
+  // Delhi NCR
+  { id: 'dist-newdelhi', name: 'New Delhi', stateCode: 'DL', stateName: 'Delhi NCR', trainingCentres: [{ id: 'tc-del-001', name: 'Capital Skill Academy', code: 'TC-DEL-001' }] },
+  { id: 'dist-southdelhi', name: 'South Delhi', stateCode: 'DL', stateName: 'Delhi NCR', trainingCentres: [{ id: 'tc-sdel-001', name: 'Okhla Technical Training Hub', code: 'TC-SDEL-001' }] },
+
+  // Telangana
+  { id: 'dist-hyderabad', name: 'Hyderabad', stateCode: 'TS', stateName: 'Telangana', trainingCentres: [{ id: 'tc-hyd-001', name: 'HITEC Skilling Mission Centre', code: 'TC-HYD-001' }] },
+  { id: 'dist-warangal', name: 'Warangal', stateCode: 'TS', stateName: 'Telangana', trainingCentres: [{ id: 'tc-wgl-001', name: 'Kakatiya Vocational Institute', code: 'TC-WGL-001' }] },
+
+  // Tamil Nadu
+  { id: 'dist-chennai', name: 'Chennai', stateCode: 'TN', stateName: 'Tamil Nadu', trainingCentres: [{ id: 'tc-chn-001', name: 'Chennai Central Skilling Institute', code: 'TC-CHN-001' }] },
+  { id: 'dist-coimbatore', name: 'Coimbatore', stateCode: 'TN', stateName: 'Tamil Nadu', trainingCentres: [{ id: 'tc-cbe-001', name: 'Kovai Engineering Skill Hub', code: 'TC-CBE-001' }] },
+
+  // Uttar Pradesh
+  { id: 'dist-noida', name: 'Gautam Buddha Nagar (Noida)', stateCode: 'UP', stateName: 'Uttar Pradesh', trainingCentres: [{ id: 'tc-noi-001', name: 'Noida IT & Electronics Skill Hub', code: 'TC-NOI-001' }] },
+  { id: 'dist-lucknow', name: 'Lucknow', stateCode: 'UP', stateName: 'Uttar Pradesh', trainingCentres: [{ id: 'tc-lko-001', name: 'Awadh Skill Development Academy', code: 'TC-LKO-001' }] },
+  { id: 'dist-kanpur', name: 'Kanpur', stateCode: 'UP', stateName: 'Uttar Pradesh', trainingCentres: [{ id: 'tc-knp-001', name: 'Kanpur Technical Training Centre', code: 'TC-KNP-001' }] },
+
+  // Gujarat
+  { id: 'dist-ahmedabad', name: 'Ahmedabad', stateCode: 'GJ', stateName: 'Gujarat', trainingCentres: [{ id: 'tc-ahd-001', name: 'Sabarmati Vocational Centre', code: 'TC-AHD-001' }] },
+  { id: 'dist-surat', name: 'Surat', stateCode: 'GJ', stateName: 'Gujarat', trainingCentres: [{ id: 'tc-sur-001', name: 'Diamond City Skill Hub', code: 'TC-SUR-001' }] },
+
+  // Rajasthan
+  { id: 'dist-jaipur', name: 'Jaipur', stateCode: 'RJ', stateName: 'Rajasthan', trainingCentres: [{ id: 'tc-jpr-001', name: 'Pink City Skilling Institute', code: 'TC-JPR-001' }] },
+  { id: 'dist-jodhpur', name: 'Jodhpur', stateCode: 'RJ', stateName: 'Rajasthan', trainingCentres: [{ id: 'tc-jdh-001', name: 'Marwar Vocational Academy', code: 'TC-JDH-001' }] },
+
+  // West Bengal
+  { id: 'dist-kolkata', name: 'Kolkata', stateCode: 'WB', stateName: 'West Bengal', trainingCentres: [{ id: 'tc-kol-001', name: 'Kolkata Skill & Tech Hub', code: 'TC-KOL-001' }] },
+
+  // Kerala
+  { id: 'dist-ernakulam', name: 'Kochi (Ernakulam)', stateCode: 'KL', stateName: 'Kerala', trainingCentres: [{ id: 'tc-koc-001', name: 'Cochin Maritime & Tech Academy', code: 'TC-KOC-001' }] },
+
+  // Madhya Pradesh
+  { id: 'dist-indore', name: 'Indore', stateCode: 'MP', stateName: 'Madhya Pradesh', trainingCentres: [{ id: 'tc-ind-001', name: 'Malwa Advanced Skill Centre', code: 'TC-IND-001' }] },
+
+  // Punjab & Haryana
+  { id: 'dist-ludhiana', name: 'Ludhiana', stateCode: 'PB', stateName: 'Punjab', trainingCentres: [{ id: 'tc-ldh-001', name: 'Ludhiana Industrial Training Hub', code: 'TC-LDH-001' }] },
+  { id: 'dist-gurugram', name: 'Gurugram', stateCode: 'HR', stateName: 'Haryana', trainingCentres: [{ id: 'tc-gur-001', name: 'Cyber City Vocational Institute', code: 'TC-GUR-001' }] },
+
+  // Andhra Pradesh & Bihar & Odisha
+  { id: 'dist-vizag', name: 'Visakhapatnam', stateCode: 'AP', stateName: 'Andhra Pradesh', trainingCentres: [{ id: 'tc-vzg-001', name: 'Vizag Coastal Skill Centre', code: 'TC-VZG-001' }] },
+  { id: 'dist-patna', name: 'Patna', stateCode: 'BR', stateName: 'Bihar', trainingCentres: [{ id: 'tc-pat-001', name: 'Patliputra Vocational Centre', code: 'TC-PAT-001' }] },
+  { id: 'dist-bhubaneswar', name: 'Bhubaneswar', stateCode: 'OD', stateName: 'Odisha', trainingCentres: [{ id: 'tc-bbs-001', name: 'Kalinga Skilling Hub', code: 'TC-BBS-001' }] },
 ];
 
 const demoUsers: any[] = [
-  { id: 'user-anika', name: 'Anika Sharma', email: 'anika@certiflow.demo', password: 'Demo@1234', role: 'TRAINING_CENTRE', trainingCentreId: 'tc-pune-001', districtId: 'dist-pune', trainingCentre: { id: 'tc-pune-001', name: 'Pune Skill Development Centre', code: 'TC-PUNE-001' }, district: { id: 'dist-pune', name: 'Pune' } },
-  { id: 'user-dev', name: 'Dev Kulkarni', email: 'dev@certiflow.demo', password: 'Demo@1234', role: 'DISTRICT_OFFICER', districtId: 'dist-pune', district: { id: 'dist-pune', name: 'Pune' } },
-  { id: 'user-meera', name: 'Meera Joshi', email: 'meera@certiflow.demo', password: 'Demo@1234', role: 'DISTRICT_OFFICER', districtId: 'dist-pune', district: { id: 'dist-pune', name: 'Pune' } },
-  { id: 'user-kabir', name: 'Kabir Patel', email: 'kabir@certiflow.demo', password: 'Demo@1234', role: 'DISTRICT_OFFICER', districtId: 'dist-nashik', district: { id: 'dist-nashik', name: 'Nashik' } },
+  { id: 'user-anika', name: 'Anika Sharma', email: 'anika@certiflow.demo', password: 'Demo@1234', role: 'TRAINING_CENTRE', trainingCentreId: 'tc-pune-001', districtId: 'dist-pune', trainingCentre: { id: 'tc-pune-001', name: 'Pune Skill Development Centre', code: 'TC-PUNE-001' }, district: { id: 'dist-pune', name: 'Pune', stateName: 'Maharashtra' } },
+  { id: 'user-dev', name: 'Dev Kulkarni', email: 'dev@certiflow.demo', password: 'Demo@1234', role: 'DISTRICT_OFFICER', districtId: 'dist-pune', district: { id: 'dist-pune', name: 'Pune', stateName: 'Maharashtra' } },
+  { id: 'user-meera', name: 'Meera Joshi', email: 'meera@certiflow.demo', password: 'Demo@1234', role: 'DISTRICT_OFFICER', districtId: 'dist-pune', district: { id: 'dist-pune', name: 'Pune', stateName: 'Maharashtra' } },
+  { id: 'user-kabir', name: 'Kabir Patel', email: 'kabir@certiflow.demo', password: 'Demo@1234', role: 'DISTRICT_OFFICER', districtId: 'dist-nashik', district: { id: 'dist-nashik', name: 'Nashik', stateName: 'Maharashtra' } },
   { id: 'user-neha', name: 'Neha Gupta', email: 'neha@certiflow.demo', password: 'Demo@1234', role: 'QUALITY_TEAM' },
   { id: 'user-farah', name: 'Farah Khan', email: 'farah@certiflow.demo', password: 'Demo@1234', role: 'STATE_OFFICE' },
 ];
@@ -130,274 +201,27 @@ let notifications: any[] = [];
 
 function addAudit(action: string, userId: string, role: string, batchId?: string, reason?: string, metadata?: any) {
   const user = demoUsers.find(u => u.id === userId);
-  auditLogs.push({
-    id: `audit-${Date.now()}-${Math.random()}`,
+  const batch = batches.find(b => b.id === batchId);
+  auditLogs.unshift({
+    id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
     action,
     userId,
     userRole: role,
     user: user ? { id: user.id, name: user.name, role: user.role } : null,
     batchId: batchId || null,
+    batchName: batch?.batchName || metadata?.batchName || null,
     reason: reason || null,
     metadata: metadata || null,
     createdAt: new Date(),
   });
 }
 
-// ── Pre-Seed Comprehensive Workflow Data ──────────────────────────────────────
+// ── Clean Slate: Zero Existing Batches for Live Testing ──────────────────────
 async function seedInitialData() {
-  const tc1 = { name: 'Pune Skill Development Centre', code: 'TC-PUNE-001' };
-  const tc2 = { name: 'Nashik Vocational Institute', code: 'TC-NSK-001' };
-
-  // 1. Batch in DISTRICT_REVIEW (Awaiting Dev & Meera)
-  const batch1 = {
-    id: 'batch-pune-01',
-    trainingCentreId: 'tc-pune-001',
-    districtId: 'dist-pune',
-    uploadedById: 'user-anika',
-    courseName: 'Basic Computer Skills',
-    batchName: 'Basic Computer Skills – Batch 2024-01',
-    status: 'DISTRICT_REVIEW',
-    totalCandidates: 3,
-    submissionCount: 1,
-    notes: 'Submitted for district review',
-    isLargeBatch: false,
-    createdAt: new Date(Date.now() - 3600000 * 24),
-    updatedAt: new Date(Date.now() - 3600000 * 12),
-    trainingCentre: tc1,
-    district: { name: 'Pune' },
-    uploadedBy: { name: 'Anika Sharma', email: 'anika@certiflow.demo', role: 'TRAINING_CENTRE' },
-    candidates: [
-      { id: 'c-101', candidateExtId: 'CAND-001', fullName: 'Rajesh Kumar', phone: '9876543210', email: 'rajesh@example.com', courseName: 'Basic Computer Skills', trainingCentre: 'Pune Skill Development Centre', district: 'Pune', marks: 85.5, status: 'PENDING', completionDate: new Date('2024-10-15') },
-      { id: 'c-102', candidateExtId: 'CAND-002', fullName: 'Priya Deshmukh', phone: '9765432109', email: 'priya@example.com', courseName: 'Basic Computer Skills', trainingCentre: 'Pune Skill Development Centre', district: 'Pune', marks: 92.0, status: 'PENDING', completionDate: new Date('2024-10-15') },
-      { id: 'c-103', candidateExtId: 'CAND-003', fullName: 'Amit Patil', phone: '8765432108', courseName: 'Basic Computer Skills', trainingCentre: 'Pune Skill Development Centre', district: 'Pune', marks: 78.0, status: 'PENDING', completionDate: new Date('2024-10-15') },
-    ],
-    submissions: [
-      {
-        id: 'sub-pune-01',
-        batchId: 'batch-pune-01',
-        submittedById: 'user-anika',
-        submittedBy: { name: 'Anika Sharma', email: 'anika@certiflow.demo' },
-        submissionNum: 1,
-        submittedAt: new Date(Date.now() - 3600000 * 12),
-        districtApprovals: [], // Awaiting Officer 1 and 2
-        qualityReview: null,
-        stateApproval: null,
-      }
-    ],
-    certificates: [],
-    escalations: [],
-  };
-
-  // 2. Batch in DISTRICT_REVIEW (Officer 1 already approved, awaiting Officer 2 Meera)
-  const batch2 = {
-    id: 'batch-nsk-02',
-    trainingCentreId: 'tc-nsk-001',
-    districtId: 'dist-pune',
-    uploadedById: 'user-anika',
-    courseName: 'Solar PV Technician',
-    batchName: 'Solar PV Technician – Batch 2024-02',
-    status: 'DISTRICT_REVIEW',
-    totalCandidates: 3,
-    submissionCount: 1,
-    notes: 'Approved by Dev, awaiting second district officer',
-    isLargeBatch: false,
-    createdAt: new Date(Date.now() - 3600000 * 48),
-    updatedAt: new Date(Date.now() - 3600000 * 6),
-    trainingCentre: tc1,
-    district: { name: 'Pune' },
-    uploadedBy: { name: 'Anika Sharma', email: 'anika@certiflow.demo', role: 'TRAINING_CENTRE' },
-    candidates: [
-      { id: 'c-201', candidateExtId: 'CAND-021', fullName: 'Suresh Raina', phone: '9822334455', email: 'suresh@example.com', courseName: 'Solar PV Technician', trainingCentre: 'Pune Skill Development Centre', district: 'Pune', marks: 88.0, status: 'PENDING', completionDate: new Date('2024-10-20') },
-      { id: 'c-202', candidateExtId: 'CAND-022', fullName: 'Kavita Shinde', phone: '9822334456', email: 'kavita@example.com', courseName: 'Solar PV Technician', trainingCentre: 'Pune Skill Development Centre', district: 'Pune', marks: 91.5, status: 'PENDING', completionDate: new Date('2024-10-20') },
-      { id: 'c-203', candidateExtId: 'CAND-023', fullName: 'Ganesh More', phone: '9822334457', email: 'ganesh@example.com', courseName: 'Solar PV Technician', trainingCentre: 'Pune Skill Development Centre', district: 'Pune', marks: 82.0, status: 'PENDING', completionDate: new Date('2024-10-20') },
-    ],
-    submissions: [
-      {
-        id: 'sub-nsk-02',
-        batchId: 'batch-nsk-02',
-        submittedById: 'user-anika',
-        submittedBy: { name: 'Anika Sharma', email: 'anika@certiflow.demo' },
-        submissionNum: 1,
-        submittedAt: new Date(Date.now() - 3600000 * 24),
-        districtApprovals: [
-          {
-            id: 'da-dev-01',
-            officerId: 'user-dev',
-            officer: { name: 'Dev Kulkarni', email: 'dev@certiflow.demo' },
-            decision: 'APPROVED',
-            reason: 'Candidate records verified with attendance logs.',
-            decidedAt: new Date(Date.now() - 3600000 * 6),
-          }
-        ],
-        qualityReview: null,
-        stateApproval: null,
-      }
-    ],
-    certificates: [],
-    escalations: [],
-  };
-
-  // 3. Large Batch in QUALITY_REVIEW (Awaiting Neha Gupta)
-  const batch3 = {
-    id: 'batch-large-03',
-    trainingCentreId: 'tc-pune-001',
-    districtId: 'dist-pune',
-    uploadedById: 'user-anika',
-    courseName: 'Advanced IT & Cloud Skills',
-    batchName: 'Advanced Cloud & Web – Batch 2024-03',
-    status: 'QUALITY_REVIEW',
-    totalCandidates: 60,
-    submissionCount: 1,
-    notes: 'Large batch requiring quality scrutiny',
-    isLargeBatch: true,
-    createdAt: new Date(Date.now() - 3600000 * 36),
-    updatedAt: new Date(Date.now() - 3600000 * 4),
-    trainingCentre: tc1,
-    district: { name: 'Pune' },
-    uploadedBy: { name: 'Anika Sharma', email: 'anika@certiflow.demo', role: 'TRAINING_CENTRE' },
-    candidates: Array.from({ length: 60 }, (_, i) => ({
-      id: `c-lg-${i + 1}`,
-      candidateExtId: `CAND-LG-${String(i + 1).padStart(3, '0')}`,
-      fullName: `Candidate ${i + 1} Cloud`,
-      phone: `98${String(10000000 + i + 1)}`,
-      email: `cand${i + 1}@cloudskill.org`,
-      courseName: 'Advanced IT & Cloud Skills',
-      trainingCentre: 'Pune Skill Development Centre',
-      district: 'Pune',
-      marks: 75 + (i % 20),
-      status: 'PENDING',
-      completionDate: new Date('2024-11-01'),
-    })),
-    submissions: [
-      {
-        id: 'sub-lg-03',
-        batchId: 'batch-large-03',
-        submittedById: 'user-anika',
-        submissionNum: 1,
-        submittedAt: new Date(Date.now() - 3600000 * 20),
-        districtApprovals: [
-          { id: 'da-1', officerId: 'user-dev', officer: { name: 'Dev Kulkarni' }, decision: 'APPROVED', decidedAt: new Date() },
-          { id: 'da-2', officerId: 'user-meera', officer: { name: 'Meera Joshi' }, decision: 'APPROVED', decidedAt: new Date() },
-        ],
-        qualityReview: null,
-        stateApproval: null,
-      }
-    ],
-    certificates: [],
-    escalations: [],
-  };
-
-  // 4. Batch in STATE_REVIEW (Awaiting Farah Khan)
-  const batch4 = {
-    id: 'batch-state-04',
-    trainingCentreId: 'tc-nsk-001',
-    districtId: 'dist-nashik',
-    uploadedById: 'user-anika',
-    courseName: 'Healthcare General Duty Assistant',
-    batchName: 'Healthcare Assistant – Batch 2024-04',
-    status: 'STATE_REVIEW',
-    totalCandidates: 3,
-    submissionCount: 1,
-    notes: 'Dual district approved, awaiting final state authorization',
-    isLargeBatch: false,
-    createdAt: new Date(Date.now() - 3600000 * 40),
-    updatedAt: new Date(Date.now() - 3600000 * 2),
-    trainingCentre: tc2,
-    district: { name: 'Nashik' },
-    uploadedBy: { name: 'Anika Sharma', email: 'anika@certiflow.demo', role: 'TRAINING_CENTRE' },
-    candidates: [
-      { id: 'c-401', candidateExtId: 'CAND-041', fullName: 'Pooja Jadhav', phone: '9988776611', email: 'pooja@health.org', courseName: 'Healthcare General Duty Assistant', trainingCentre: 'Nashik Vocational Institute', district: 'Nashik', marks: 95.0, status: 'PENDING', completionDate: new Date('2024-10-25') },
-      { id: 'c-402', candidateExtId: 'CAND-042', fullName: 'Rahul Tambe', phone: '9988776622', email: 'rahul@health.org', courseName: 'Healthcare General Duty Assistant', trainingCentre: 'Nashik Vocational Institute', district: 'Nashik', marks: 87.5, status: 'PENDING', completionDate: new Date('2024-10-25') },
-      { id: 'c-403', candidateExtId: 'CAND-043', fullName: 'Deepak Salve', phone: '9988776633', email: 'deepak@health.org', courseName: 'Healthcare General Duty Assistant', trainingCentre: 'Nashik Vocational Institute', district: 'Nashik', marks: 89.0, status: 'PENDING', completionDate: new Date('2024-10-25') },
-    ],
-    submissions: [
-      {
-        id: 'sub-st-04',
-        batchId: 'batch-state-04',
-        submittedById: 'user-anika',
-        submissionNum: 1,
-        districtApprovals: [
-          { id: 'da-k1', officerId: 'user-kabir', officer: { name: 'Kabir Patel' }, decision: 'APPROVED', decidedAt: new Date() },
-          { id: 'da-k2', officerId: 'user-dev', officer: { name: 'Dev Kulkarni' }, decision: 'APPROVED', decidedAt: new Date() },
-        ],
-        qualityReview: null,
-        stateApproval: null,
-      }
-    ],
-    certificates: [],
-    escalations: [],
-  };
-
-  // 5. Already APPROVED Batch with Real Pre-Generated Certificates!
-  const batch5 = {
-    id: 'batch-app-05',
-    trainingCentreId: 'tc-pune-001',
-    districtId: 'dist-pune',
-    uploadedById: 'user-anika',
-    courseName: 'Automotive Maintenance & Diagnostics',
-    batchName: 'Automotive Diagnostics – Batch 2024-05',
-    status: 'APPROVED',
-    totalCandidates: 3,
-    submissionCount: 1,
-    notes: 'Fully approved and certificates issued',
-    isLargeBatch: false,
-    createdAt: new Date(Date.now() - 3600000 * 72),
-    updatedAt: new Date(Date.now() - 3600000 * 24),
-    trainingCentre: tc1,
-    district: { name: 'Pune' },
-    uploadedBy: { name: 'Anika Sharma', email: 'anika@certiflow.demo', role: 'TRAINING_CENTRE' },
-    candidates: [
-      { id: 'c-501', candidateExtId: 'CAND-051', fullName: 'Tanmay Kothari', phone: '9811223344', email: 'tanmay@example.com', courseName: 'Automotive Maintenance & Diagnostics', trainingCentre: 'Pune Skill Development Centre', district: 'Pune', marks: 93.0, status: 'CERTIFIED', completionDate: new Date('2024-10-10') },
-      { id: 'c-502', candidateExtId: 'CAND-052', fullName: 'Snehal Bhise', phone: '9811223355', email: 'snehal@example.com', courseName: 'Automotive Maintenance & Diagnostics', trainingCentre: 'Pune Skill Development Centre', district: 'Pune', marks: 89.5, status: 'CERTIFIED', completionDate: new Date('2024-10-10') },
-      { id: 'c-503', candidateExtId: 'CAND-053', fullName: 'Rohit Thorat', phone: '9811223366', email: 'rohit@example.com', courseName: 'Automotive Maintenance & Diagnostics', trainingCentre: 'Pune Skill Development Centre', district: 'Pune', marks: 86.0, status: 'CERTIFIED', completionDate: new Date('2024-10-10') },
-    ],
-    submissions: [],
-    certificates: [],
-    escalations: [],
-  };
-
-  batches = [batch1, batch2, batch3, batch4, batch5];
-
-  // Pre-generate PDF & QR codes for batch 5
-  console.log('Generating initial demo certificate PDFs...');
-  for (const cand of batch5.candidates) {
-    const certNum = generateCertificateNumber();
-    const verifyUrl = `http://localhost:5173/verify/${certNum}`;
-    const qrDataUrl = await QRCode.toDataURL(verifyUrl);
-    const pdfBuffer = await generateCertificatePDF({
-      candidateName: cand.fullName,
-      courseName: cand.courseName,
-      trainingCentre: cand.trainingCentre,
-      district: cand.district,
-      completionDate: cand.completionDate,
-      certificateNumber: certNum,
-      qrDataUrl,
-    });
-    const fileName = `${certNum}.pdf`;
-    fs.writeFileSync(path.join(CERT_DIR, fileName), pdfBuffer);
-
-    const cert = {
-      id: `cert-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-      certificateNumber: certNum,
-      candidateId: cand.id,
-      candidateName: cand.fullName,
-      course: cand.courseName,
-      candidate: { ...cand },
-      batchId: batch5.id,
-      batch: { batchName: batch5.batchName, courseName: batch5.courseName },
-      trainingCentre: { name: cand.trainingCentre },
-      status: 'ACTIVE',
-      pdfPath: fileName,
-      qrCodeData: verifyUrl,
-      generatedAt: new Date(Date.now() - 3600000 * 24),
-      issuedDate: new Date(Date.now() - 3600000 * 24).toISOString(),
-    };
-
-    (cand as any).certificate = { certificateNumber: certNum, status: 'ACTIVE' };
-    certificates.push(cert);
-    batch5.certificates.push(cert);
-  }
-  console.log(`✓ ${certificates.length} demo certificates generated and available for download!`);
+  batches = [];
+  certificates = [];
+  addAudit('SYSTEM_INITIALIZED', 'user-farah', 'STATE_OFFICE', undefined, 'Clean slate initialized. 0 existing batches. Ready for fresh candidate batch upload.');
+  console.log('✓ Clean slate: 0 existing batches. System ready for live user testing.');
 }
 
 seedInitialData().catch(console.error);
@@ -508,8 +332,16 @@ app.post('/api/auth/refresh', (req, res) => {
 
 app.post('/api/auth/logout', (_req, res) => res.json({ message: 'Logged out' }));
 
-// ── Districts ────────────────────────────────────────────────────────────────
-app.get('/api/districts', (_req, res) => res.json(districts));
+// ── States & Districts ───────────────────────────────────────────────────────
+app.get('/api/states', (_req, res) => res.json(states));
+
+app.get('/api/districts', (req, res) => {
+  const { state } = req.query;
+  if (state) {
+    return res.json(districts.filter(d => d.stateCode === state || d.stateName.toLowerCase() === (state as string).toLowerCase()));
+  }
+  res.json(districts);
+});
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 app.get('/api/dashboard/stats', authenticate, (req: any, res) => {
@@ -856,6 +688,25 @@ app.get('/api/batches/:id/candidates', authenticate, (req, res) => {
   const batch = batches.find(b => b.id === req.params.id);
   if (!batch) return res.status(404).json({ error: 'Batch not found' });
   res.json(batch.candidates);
+});
+
+// ── Global & Filterable Audit Trail ─────────────────────────────────────────
+app.get('/api/audit', authenticate, (req: any, res) => {
+  const { batchId, action, limit } = req.query;
+  let result = [...auditLogs];
+  if (batchId && batchId !== 'all') {
+    result = result.filter(a => a.batchId === batchId);
+  }
+  if (action && action !== 'all') {
+    result = result.filter(a => a.action === action);
+  }
+  const max = limit ? parseInt(limit as string, 10) : 250;
+  const sliced = result.slice(0, max);
+  res.json({
+    data: sliced,
+    auditLog: sliced,
+    total: result.length,
+  });
 });
 
 app.get('/api/batches/:id/audit', authenticate, (req, res) => {

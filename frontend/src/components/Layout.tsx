@@ -31,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Final Approvals', to: '/approvals', icon: CheckSquare, roles: ['STATE_OFFICE'] },
   { label: 'All Batches', to: '/batches', icon: FileText, roles: ['STATE_OFFICE'] },
   { label: 'Certificates', to: '/certificates', icon: Award, roles: ['STATE_OFFICE', 'TRAINING_CENTRE', 'DISTRICT_OFFICER', 'QUALITY_TEAM'] },
-  { label: 'Audit Log', to: '/audit', icon: ClipboardList, roles: ['STATE_OFFICE'] },
+  { label: 'Audit Log', to: '/audit', icon: ClipboardList, roles: ['STATE_OFFICE', 'QUALITY_TEAM', 'DISTRICT_OFFICER'] },
 ];
 
 const DEMO_USERS = [
