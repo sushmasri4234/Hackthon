@@ -1,271 +1,293 @@
-# CertiFlow — Pragati Skills Mission Certificate Issuance Platform
+# CertiFlow — Trust-First Skilling Certificate Issuance Platform
 
-> **Hackathon submission** | Government Digital Certificate Workflow System
-
-CertiFlow is a full-stack, multi-role web application that digitises the end-to-end lifecycle of skill-training certificates for the **Pragati Skills Mission (PSM)** programme. It replaces a manual, error-prone paper workflow with a structured approval pipeline, automated PDF certificate generation, and WhatsApp delivery.
-
----
-
-## Table of Contents
-
-1. [Architecture](#architecture)
-2. [Tech Stack](#tech-stack)
-3. [Quick Start (Docker Compose)](#quick-start-docker-compose)
-4. [Demo Credentials](#demo-credentials)
-5. [Test Scenarios](#test-scenarios)
-6. [API Endpoints](#api-endpoints)
-7. [Design Decisions](#design-decisions)
-8. [Limitations & Future Work](#limitations--future-work)
+> **Fictional Government Programme:** Pragati Skills Mission (PSM)  
+> **Target Scale:** ~8,000 candidates/month across 300+ private training centres in 36 districts.
 
 ---
 
-## Architecture
+## 1. Project Title
+**CertiFlow: Centralized, Tamper-Evident Skilling Certificate Issuance & Public Verification Platform.**
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                        Browser (React SPA)                     │
-│  LoginPage  DashboardPage  BatchListPage  NewBatchPage         │
-│  BatchDetailPage  ApprovalsPage  CertificatesPage  AuditPage   │
-│  VerifyPage (public)                                           │
-└───────────────────┬────────────────────────────────────────────┘
-                    │  HTTP REST + Socket.IO (ws)
-                    ▼
-┌───────────────────────────────────────┐
-│          nginx (port 5173→80)         │  ◄─ Docker
-│  static SPA + reverse proxy /api,     │
-│  /socket.io → backend:3001            │
-└───────────────────┬───────────────────┘
-                    │
-                    ▼
-┌───────────────────────────────────────┐
-│       Express API (port 3001)         │  ◄─ Docker
-│  /api/auth  /api/batches             │
-│  /api/certificates  /api/dashboard   │
-│  /api/districts  /api/verify/:no     │
-│  Socket.IO rooms: role:*, user:*, tc:*│
-└───────┬────────────────┬─────────────┘
-        │                │
-        ▼                ▼
-┌──────────────┐  ┌──────────────────────┐
-│  PostgreSQL  │  │  Redis + BullMQ      │
-│  (Prisma ORM)│  │  certificate-queue   │
-│  port 5432   │  │  notification-queue  │
-└──────────────┘  └──────────┬───────────┘
-                             │
-                             ▼
-                  ┌──────────────────────┐
-                  │  Worker Process      │  ◄─ Docker (separate)
-                  │  generateCertificates│
-                  │  sendWhatsApp        │
-                  └──────────────────────┘
-```
+---
 
-**Approval pipeline:**
+## 2. Requirements Note
+This project was implemented as an individual hackathon submission following the strict mandatory technology stack:
+- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, React Router v6.
+- **Backend**: Node.js 20, Express.js 5, TypeScript.
+- **Database & ORM**: PostgreSQL 15, Prisma ORM with proper migrations.
+- **Caching & Queues**: Redis 7, BullMQ event-driven background workers.
+- **Libraries**: PDFKit (landscape A4 vector PDFs), qrcode (dynamic verification QR codes), Multer, ExcelJS (spreadsheet processing), Zod (schema validation), Socket.IO (real-time updates), Vitest (automated testing).
+- **Containerization**: Docker, Docker Compose multi-service architecture.
 
-```
-DRAFT → SUBMITTED → DISTRICT_REVIEW → QUALITY_REVIEW → STATE_REVIEW → APPROVED
-                 ↘ RETURNED ↗ (loop)
-                 ↘ REJECTED (terminal)
+No alternative backend-as-a-service providers (Firebase, Supabase, MongoDB) were used.
+
+---
+
+## 3. Problem Statement
+The Pragati Skills Mission currently faces critical operational challenges:
+- Private training centres submit candidate batches via unstandardized Excel spreadsheets over email.
+- District officers communicate informal candidate approvals via WhatsApp without centralized records.
+- Certificates are manually created in Microsoft Word, resulting in multi-week delivery lags.
+- Fraudulent and modified certificates circulate without a trusted verification mechanism.
+- Employers have no digital channel to authenticate credentials.
+- Inactive batches linger on officer desks for weeks without escalation or deadline tracking.
+
+---
+
+## 4. Proposed Solution
+**CertiFlow** delivers a unified, auditable digital platform:
+1. **Intelligent Batch Upload**: Training centres upload candidate spreadsheets with atomic validation.
+2. **Multi-Level Approval Pipeline**: Enforces approval from **two distinct district officers**, quality team scrutiny for large batches (>50 candidates), and final state office sign-off.
+3. **Automated Vector PDF Issuance**: Generates professional A4 certificates with tamper-evident QR codes and unique IDs (`PSM-YYYY-XXXXXXXX`).
+4. **Decoupled Background Processing**: Asynchronous PDF rendering and WhatsApp delivery simulation via BullMQ workers with exponential backoff.
+5. **Zero-Login Public Verification**: Employers and citizens verify validity (`VALID`, `CANCELLED`, `INVALID`) in under 2 seconds without exposing candidate PII.
+6. **Immutable Audit Trail & Escalation**: Records all state transitions with actor IDs and escalates overdue reviews automatically.
+
+---
+
+## 5. Features
+- **Trust-First Public Verification**: QR code and ID lookup verify against the live database status, instantly displaying revoked/cancelled certificates.
+- **Atomic Spreadsheet Validation**: Detects missing fields, invalid phone numbers, duplicate IDs, and out-of-range marks; provides row-by-row correction guidance.
+- **Multi-Officer Concurrency Guard**: Serializable database transactions prevent race conditions when two district officers approve simultaneously.
+- **Large Batch Scrutiny Gate**: Configurable threshold (default: 50 candidates) automatically flags batches for mandatory Quality Team review.
+- **Simulated WhatsApp Delivery**: BullMQ workers simulate delivery success, network timeouts, and exponential retries without blocking HTTP threads.
+- **Real-Time Dashboards**: WebSocket (Socket.IO) rooms broadcast live batch state transitions to connected reviewers.
+
+---
+
+## 6. User Roles & Permissions
+
+| Role | Demo User | Responsibilities & Capabilities |
+|---|---|---|
+| **Training Centre** | Anika Sharma | Create batches, upload spreadsheets, view validation errors, submit batches, resubmit returned batches. |
+| **District Officer** | Dev Kulkarni (Pune)<br>Meera Joshi (Pune)<br>Kabir Patel (Nashik) | Review candidate lists, approve, reject with reason, or return for correction. **Two distinct officers must agree.** |
+| **Quality Team** | Neha Gupta | Scrutinize large batches (>50 candidates), review consistency, flag anomalies, approve/return. |
+| **State Office** | Farah Khan | Final approval, initiate certificate generation, cancel issued certificates, monitor system metrics & audit logs. |
+| **Candidate** | Public / Trainee | Receive simulated WhatsApp notification, download digital PDF certificate via secure link. |
+| **Employer / Public** | Unauthenticated | Scan QR code or enter certificate ID to verify authenticity. Private contact data is never exposed. |
+
+---
+
+## 7. Architecture
+
+### System Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph Client["Client Tier"]
+        UI["React 18 SPA (Vite + Tailwind)"]
+        PublicVerify["Public Verification Portal (/verify)"]
+    end
+
+    subgraph Gateway["Reverse Proxy Tier"]
+        Nginx["Nginx (Port 5173 / 80)"]
+    end
+
+    subgraph AppTier["Application Tier"]
+        API["Express.js API (Port 3001)"]
+        SocketServer["Socket.IO Server (WebSockets)"]
+        ExcelService["ExcelJS Validation Service"]
+        WorkflowService["Approval Workflow Engine"]
+    end
+
+    subgraph DataTier["Data & Cache Tier"]
+        Postgres[("PostgreSQL 15 (Prisma ORM)")]
+        RedisDB[("Redis 7 (Queues & Cache)")]
+    end
+
+    subgraph WorkerTier["Background Worker Tier (BullMQ)"]
+        CertWorker["Certificate Worker (PDFKit + QR)"]
+        NotifWorker["WhatsApp Delivery Worker (Backoff)"]
+        EscalateWorker["Hourly Escalation Checker"]
+    end
+
+    UI -->|HTTP / WS| Nginx
+    PublicVerify -->|HTTP| Nginx
+    Nginx -->|Proxy /api| API
+    Nginx -->|Proxy /socket.io| SocketServer
+
+    API --> ExcelService
+    API --> WorkflowService
+    API --> Postgres
+    API -->|Enqueue Jobs| RedisDB
+
+    RedisDB --> CertWorker
+    RedisDB --> NotifWorker
+    RedisDB --> EscalateWorker
+
+    CertWorker -->|Generate Vector PDF & QR| Postgres
+    NotifWorker -->|Update Delivery State| Postgres
+    EscalateWorker -->|Flag Overdue Batches| Postgres
+    WorkflowService -->|Broadcast Updates| SocketServer
 ```
 
 ---
 
-## Tech Stack
+## 8. Technology Stack
 
-| Layer        | Technology                                           |
-|--------------|------------------------------------------------------|
-| Frontend     | React 18, TypeScript, Vite, React Router v6          |
-| UI / Icons   | Lucide-React, custom CSS (dark theme, CSS variables) |
-| State        | React Context (AuthContext), local useState/useEffect|
-| HTTP Client  | fetch (via `src/lib/api.ts` wrapper)                 |
-| Real-time    | Socket.IO client                                     |
-| Backend      | Node.js 20, Express 5, TypeScript                    |
-| ORM          | Prisma 5 (PostgreSQL)                                |
-| Auth         | JWT (jsonwebtoken) + bcryptjs                        |
-| Queues       | BullMQ on Redis 7                                    |
-| PDF          | PDFKit                                               |
-| QR Code      | qrcode                                               |
-| Excel parse  | exceljs / fast-csv                                   |
-| Logging      | Winston                                              |
-| Testing      | Vitest                                               |
-| Database     | PostgreSQL 15                                        |
-| Cache / Queue| Redis 7                                              |
-| Container    | Docker + Docker Compose                              |
-| Reverse Proxy| nginx (alpine)                                       |
+- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, React Router v6, Lucide React, Axios, Socket.IO Client, React Hot Toast.
+- **Backend**: Node.js 20, Express.js 5, TypeScript, Winston Logger, Zod, Multer, Helmet, CORS.
+- **Database**: PostgreSQL 15 with Prisma ORM 5 (schema migrations, relational constraints, composite indices).
+- **Caching & Event Queues**: Redis 7, BullMQ 5 (multi-queue event pipeline with exponential backoff).
+- **Document & Vector Rendering**: PDFKit (landscape A4 certificate rendering), qrcode.
+- **Testing**: Vitest, Supertest, ExcelJS buffer test utilities.
+- **Infrastructure**: Docker, Docker Compose multi-stage builds, Nginx.
 
 ---
 
-## Quick Start (Docker Compose)
+## 9. Database Design
 
-> **Prerequisites:** Docker Desktop ≥ 24, Docker Compose v2
+Normalized PostgreSQL schema managed via Prisma (`backend/prisma/schema.prisma`):
+
+- **User**: Authentication, role definition, training centre & district associations.
+- **District & TrainingCentre**: Hierarchical organizational mapping.
+- **Batch**: Core batch entity tracking `BatchStatus` lifecycle, `submissionCount`, and `isLargeBatch` flag.
+- **Candidate**: Candidate records with foreign key cascade on batch deletion prior to certification.
+- **BatchSubmission**: Captures resubmission history and links specific approval rounds.
+- **DistrictApproval**: Enforces dual-officer agreement with unique composite index `@@unique([batchSubmissionId, officerId])`.
+- **QualityReview**: Records quality team scrutiny decisions, notes, and anomaly flags.
+- **StateApproval**: Captures final state authorization.
+- **Certificate**: Unique certificate number `PSM-YYYY-XXXXXXXX` with unique candidate mapping `@@unique([candidateId])`.
+- **Notification**: Decoupled delivery tracking, retry count, and delivery status.
+- **AuditLog**: Append-only audit record tracking `userId`, `action`, `prevStatus`, `newStatus`, and `metadata`.
+- **Escalation**: Records automatic overdue flags and notifications to senior officers.
+
+---
+
+## 10. Event-Driven Workflow
+
+```
+Batch Submitted (Training Centre)
+       │
+       ▼
+District Officer 1 Approval ───► District Officer 2 Approval (Distinct Officer)
+                                            │
+                                            ▼
+                           Is Total Candidates >= 50?
+                                  │               │
+                              Yes │               │ No
+                                  ▼               │
+                         Quality Team Review      │
+                                  │               │
+                                  └───────┬───────┘
+                                          ▼
+                                State Final Approval
+                                          │
+                                          ▼
+                      [Event: certificate.generation.requested]
+                                          │
+                                          ▼ (BullMQ Queue)
+                          PDFKit & QR Generation Worker
+                                          │
+                                          ▼
+                      [Event: notification.delivery.requested]
+                                          │
+                                          ▼ (BullMQ Queue)
+                        WhatsApp Simulation Worker (Backoff)
+```
+
+---
+
+## 11. Key Technical Decisions & Reasons
+
+1. **Prisma Serializable Transactions for District Approvals**:
+   - *Problem*: Concurrent requests from two district officers could trigger race conditions or duplicate state transitions.
+   - *Solution*: `$transaction` with `Serializable` isolation level combined with a database `@@unique([batchSubmissionId, officerId])` constraint ensures strict linearizability.
+
+2. **Atomic Spreadsheet Validation**:
+   - *Problem*: Partial batch saves result in dangling, inconsistent candidate records.
+   - *Solution*: If even one row out of 1,000 has an invalid phone number or duplicate ID, the entire upload is rejected atomically with row-by-row correction guidance.
+
+3. **Approval Reset Policy on Resubmission**:
+   - *Policy*: When a batch is returned for correction, subsequent resubmission generates a new `BatchSubmission` record, invalidating previous district approvals while fully preserving decision history in the audit trail.
+
+4. **Decoupled Notification Delivery**:
+   - *Problem*: WhatsApp delivery failures or external API timeouts must never block certificate generation.
+   - *Solution*: Certificates are committed and marked `ACTIVE` immediately; notifications are queued independently in BullMQ with exponential backoff.
+
+5. **Privacy-Preserving Public Verification**:
+   - *Security*: Public lookup returns only verification status, candidate name, course, training centre, and completion date. Contact details (phone, email) are strictly excluded from the public response payload.
+
+---
+
+## 12. Installation Instructions
 
 ```bash
-# 1. Clone and enter the project
-git clone <repo-url> certiflow && cd certiflow
+# 1. Clone the repository
+git clone <repository-url> certiflow
+cd certiflow
 
-# 2. Launch all services (PostgreSQL, Redis, backend, worker, frontend)
-docker compose up --build -d
+# 2. Setup environment variables
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-> **Note:** The backend container automatically runs Prisma migrations and seeds all 6 demo accounts on initial boot!
-> 
-> Sample test spreadsheets are pre-generated in the `sample_data/` folder:
-> - `sample_data/valid_candidates_batch.xlsx` (5 valid candidates)
-> - `sample_data/invalid_candidates_batch.xlsx` (Fails validation: missing ID, duplicate, bad phone, high marks)
-> - `sample_data/large_batch_60_candidates.xlsx` (60 candidates – triggers Quality Team review threshold)
+---
 
-The app is now live at **http://localhost:5173**  
-The API is available at **http://localhost:3001**
+## 13. Local Execution
+
+### Option A: One-Click Runner (Windows)
+Double-click `start-local.bat` or run:
+```powershell
+.\start-local.bat
+```
+
+### Option B: Docker Compose (Full Stack)
+```bash
+docker compose up --build -d
+```
+Access endpoints:
+- **Frontend Application**: `http://localhost:5173`
+- **Backend API**: `http://localhost:3001`
+- **Public Verification**: `http://localhost:5173/verify`
 
 ---
 
-## Demo Credentials
+## 14. Demo Accounts
 
-All users share the same password: **`Demo@1234`**
+All demo users share the password: **`Demo@1234`**
 
-| # | Name           | Email                      | Role              | Scope                              |
-|---|----------------|----------------------------|-------------------|------------------------------------|
-| 1 | Anika Sharma   | anika@certiflow.demo       | TRAINING_CENTRE   | Pune Skill Development Centre      |
-| 2 | Dev Kulkarni   | dev@certiflow.demo         | DISTRICT_OFFICER  | Pune district approvals            |
-| 3 | Meera Joshi    | meera@certiflow.demo       | DISTRICT_OFFICER  | Pune district approvals (2nd officer) |
-| 4 | Kabir Patel    | kabir@certiflow.demo       | DISTRICT_OFFICER  | Nashik district approvals          |
-| 5 | Neha Gupta     | neha@certiflow.demo        | QUALITY_TEAM      | Quality review (all districts)     |
-| 6 | Farah Khan     | farah@certiflow.demo       | STATE_OFFICE      | Final approval + audit + certificates |
+| User Name | Role | Email | Scope / Purpose |
+|---|---|---|---|
+| **Anika Sharma** | `TRAINING_CENTRE` | `anika@certiflow.demo` | Batch creator & uploader (Pune Centre) |
+| **Dev Kulkarni** | `DISTRICT_OFFICER` | `dev@certiflow.demo` | District reviewer 1 (Pune District) |
+| **Meera Joshi** | `DISTRICT_OFFICER` | `meera@certiflow.demo` | District reviewer 2 (Pune District) |
+| **Kabir Patel** | `DISTRICT_OFFICER` | `kabir@certiflow.demo` | District reviewer (Nashik District) |
+| **Neha Gupta** | `QUALITY_TEAM` | `neha@certiflow.demo` | Quality review for large batches |
+| **Farah Khan** | `STATE_OFFICE` | `farah@certiflow.demo` | State final approval & certificate cancellation |
 
----
-
-## Test Scenarios
-
-### Scenario 1 — Happy Path: Batch Created and Approved
-
-1. Log in as **Anika** (Training Centre).
-2. Go to **New Batch**, fill in course name, upload the sample Excel file.
-3. Submit the batch → status changes to `DISTRICT_REVIEW`.
-4. Log in as **Dev** (District Officer, Pune).
-5. Open **Pending Approvals** → click the batch → Approve with a note.
-6. Log in as **Neha** (Quality Team) → Approve the quality review.
-7. Log in as **Farah** (State Office) → Final Approve.
-8. Status changes to `APPROVED`; the worker generates PDFs and queues WhatsApp notifications.
-
-### Scenario 2 — Rejection and Resubmission
-
-1. As **Anika**, create and submit a batch.
-2. As **Dev**, reject it with reason "Marks column missing".
-3. As **Anika**, open the batch → see rejection reason → Edit & Resubmit.
-4. Confirm `submissionCount` increments to 2.
-
-### Scenario 3 — Return for Correction
-
-1. Submit a batch as **Anika**.
-2. As **Neha** (Quality Team), use the **Return** action with feedback.
-3. As **Anika**, correct and resubmit → batch goes back to `QUALITY_REVIEW`.
-
-### Scenario 4 — Large Batch (> 50 candidates) Async Generation
-
-1. Upload an Excel file with 60+ candidates.
-2. After state approval, observe `isLargeBatch: true` on the batch record.
-3. Certificate generation is processed asynchronously by the worker process.
-4. Real-time Socket.IO toast appears when certificates are ready.
-
-### Scenario 5 — Certificate Verification (Public QR)
-
-1. After certificates are generated, open any certificate PDF.
-2. Scan the QR code (or visit `/verify/<CERT-NUMBER>`).
-3. Confirm the public verification page shows valid certificate details without login.
-4. As **Farah** (State Office), cancel the certificate with a reason.
-5. Re-scan the QR → page shows `CANCELLED` status.
-
-### Scenario 6 — Escalation / Delayed Batch Alert
-
-1. As **Anika**, submit a batch.
-2. Wait for the escalation scheduler to fire (or manually insert an `Escalation` row in the DB).
-3. Log in as **Farah** → Dashboard shows escalation warning banner.
-4. Open **Audit Page** → select the batch → timeline shows `ESCALATION_CREATED` entry.
+*One-click login buttons on the login page allow instant account switching.*
 
 ---
 
-## API Endpoints
+## 15. Testing Instructions
 
-### Auth
-| Method | Path               | Auth | Description              |
-|--------|--------------------|------|--------------------------|
-| POST   | `/api/auth/login`  | No   | Returns JWT token + user |
-| POST   | `/api/auth/logout` | Yes  | Audit log entry          |
-| GET    | `/api/auth/me`     | Yes  | Returns current user     |
+Run the automated Vitest test suite covering all 6 mandatory hackathon scenarios:
 
-### Batches
-| Method | Path                        | Auth | Description                       |
-|--------|-----------------------------|------|-----------------------------------|
-| GET    | `/api/batches`              | Yes  | List batches (filtered by role)   |
-| POST   | `/api/batches`              | Yes  | Create new batch + upload Excel   |
-| GET    | `/api/batches/:id`          | Yes  | Batch detail with candidates      |
-| POST   | `/api/batches/:id/submit`   | Yes  | Submit batch for approval         |
-| POST   | `/api/batches/:id/approve`  | Yes  | District / State approval         |
-| POST   | `/api/batches/:id/reject`   | Yes  | Reject batch                      |
-| POST   | `/api/batches/:id/return`   | Yes  | Return batch with feedback        |
-| GET    | `/api/batches/:id/audit`    | Yes  | Audit trail for a batch           |
+```bash
+cd backend
+npm test
+```
 
-### Certificates
-| Method | Path                            | Auth | Description              |
-|--------|---------------------------------|------|--------------------------|
-| GET    | `/api/certificates`             | Yes  | List certificates        |
-| GET    | `/api/certificates/:id/download`| Yes  | Stream PDF download      |
-| POST   | `/api/certificates/:id/cancel`  | Yes  | Cancel certificate       |
-
-### Districts
-| Method | Path              | Auth | Description                       |
-|--------|-------------------|------|-----------------------------------|
-| GET    | `/api/districts`  | No   | All districts + training centres  |
-
-### Dashboard
-| Method | Path                           | Auth | Description               |
-|--------|--------------------------------|------|---------------------------|
-| GET    | `/api/dashboard/stats`         | Yes  | KPI counters              |
-| GET    | `/api/dashboard/delayed`       | Yes  | Escalated/delayed batches |
-| GET    | `/api/dashboard/notifications` | Yes  | Recent notifications      |
-
-### Public Verify
-| Method | Path                      | Auth | Description                     |
-|--------|---------------------------|------|---------------------------------|
-| GET    | `/api/verify/:certNumber` | No   | Public certificate verification |
-
-### Health
-| Method | Path      | Auth | Description |
-|--------|-----------|------|-------------|
-| GET    | `/health` | No   | Liveness    |
+### The 6 Mandatory Hackathon Scenarios Tested:
+1. **TEST 1: Invalid Excel Upload**: Verifies atomic rejection with row numbers, field errors, and suggestions; confirms zero partial saves.
+2. **TEST 2: Concurrent District Approvals**: Proves two distinct officers are required and duplicate approvals are blocked.
+3. **TEST 3: 60-Candidate Batch**: Confirms exactly 60 unique certificates (`PSM-YYYY-XXXXXXXX`) are issued without duplicates.
+4. **TEST 4: WhatsApp Failure**: Proves certificate issuance succeeds independently of notification timeouts and retries.
+5. **TEST 5: Certificate Cancellation**: Confirms cancelled certificates immediately display `CANCELLED` on the public verification page.
+6. **TEST 6: Return & Resubmission**: Validates that resubmitted batches require fresh district approvals while preserving audit history.
 
 ---
 
-## Design Decisions
-
-### Prisma Serializable Transactions
-Certificate generation inside `approvalWorkflowService` uses `prisma.$transaction(..., { isolationLevel: 'Serializable' })` to prevent two concurrent state-approval requests from both triggering certificate generation for the same batch. This guarantees exactly-once semantics under race conditions without an external distributed lock.
-
-### Idempotent BullMQ Job IDs
-Each certificate-notification job is enqueued with `jobId: 'notif-<certificateId>'`. BullMQ silently drops a job whose ID already exists in the queue, making the enqueue step safe to retry after a crash with no duplicate WhatsApp messages sent.
-
-### 50-Candidate Threshold (`isLargeBatch`)
-Batches with more than 50 candidates are flagged `isLargeBatch: true` at upload time. The API acknowledges the batch synchronously and defers PDF generation to the BullMQ worker process. This keeps the HTTP request under a 30-second timeout even for large datasets, while the client receives a real-time Socket.IO event when generation completes.
-
-### Outbox Pattern (OutboxEvent)
-Audit events and notification triggers are written to the `OutboxEvent` table in the same database transaction as the status change. A periodic worker polls this table and processes events, ensuring no event is lost if the application crashes between the DB write and the queue enqueue.
-
-### Role-Based Data Scoping
-Every database query on `Batch` and `Certificate` is conditionally filtered by `trainingCentreId` for `TRAINING_CENTRE` users. District officers see only batches in their `districtId`. This prevents horizontal privilege escalation without a separate permissions service.
+## 16. Known Limitations
+- The simulated WhatsApp provider logs notifications in Redis and database records rather than making real Meta Cloud API HTTP calls.
+- In single-machine standalone mode without Docker, the embedded store maintains state in-memory during the demo process lifecycle.
+- Certificate template currently supports standard landscape A4; custom regional multi-language layouts require additional font packs.
 
 ---
 
-## Limitations & Future Work
-
-| Area | Current State | Future |
-|------|---------------|--------|
-| Notifications | WhatsApp via BullMQ queue; actual delivery mocked unless `WHATSAPP_API_URL` is set | Integrate Twilio / Gupshup WhatsApp Business API |
-| Email | Not implemented | Add Nodemailer + SMTP or SendGrid |
-| Excel validation | Basic column checks; marks range 0–100 | Full schema validation with detailed per-row error reports |
-| PDF storage | Local filesystem volume | Move to S3-compatible object store (MinIO / AWS S3) |
-| Search & filter | Basic status filter | Full-text search on candidate names, pagination on all endpoints |
-| Multi-tenancy | Single state (MH) hard-coded | Multi-state support with state-scoped admin roles |
-| Tests | Vitest unit tests for approval workflow | Integration tests with a test database; Playwright E2E |
-| Observability | Winston logs | OpenTelemetry traces + Prometheus metrics |
-| Auth | JWT in localStorage | Refresh tokens, httpOnly cookies, MFA |
-| i18n | English only | Marathi / Hindi support |
+## 17. Future Improvements
+- **DigiLocker Integration**: Direct National Academic Depository (NAD) / DigiLocker push API integration.
+- **Multilingual Certificate Rendering**: Native Devanagari and regional language script support in PDFKit.
+- **Cryptographic Signatures**: X.509 digital signature certificates (e-Sign) embedded into PDF metadata.
+- **Automated Aadhaar / UIDAI Seeding**: Pre-upload identity verification integration.

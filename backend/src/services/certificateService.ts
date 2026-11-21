@@ -10,7 +10,7 @@ import fs from 'fs';
 const STORAGE_PATH = process.env.CERTIFICATE_STORAGE_PATH || './certificates';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-function generateCertificateNumber(): string {
+export function generateCertificateNumber(): string {
   const year = new Date().getFullYear();
   const random = Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
   return `PSM-${year}-${random}`;
@@ -27,11 +27,11 @@ async function ensureUniqueNumber(): Promise<string> {
   throw new Error('Failed to generate unique certificate number after 10 attempts');
 }
 
-async function generateQRCode(verificationUrl: string): Promise<string> {
+export async function generateQRCode(verificationUrl: string): Promise<string> {
   return QRCode.toDataURL(verificationUrl);
 }
 
-async function generateCertificatePDF(params: {
+export async function generateCertificatePDF(params: {
   candidateName: string;
   courseName: string;
   trainingCentre: string;
