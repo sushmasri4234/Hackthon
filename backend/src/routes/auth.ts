@@ -8,6 +8,77 @@ import { authenticate, AuthenticatedRequest } from '../middleware/auth';
 
 const router = Router();
 
+router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name, email, password, role, districtId, trainingCentreName, trainingCentreCode } = req.body;
+    if (!name?.trim() || !email?.trim() || !password || !role) {
+      res.status(400).json({ error: 'Full name, email, password, and role are required' });
+      return;
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) {
+      res.status(409).json({ error: 'An account with this email already exists' });
+      return;
+    }
+
+    let tcId = undefined;
+    if (role === 'TRAINING_CENTRE') {
+      const code = trainingCentreCode?.trim() || `TC-${Date.now().toString().slice(-4)}`;
+      const dist = districtId ? await prisma.district.findUnique({ where: { id: districtId } }) : await prisma.district.findFirst();
+      if (dist) {
+        const tc = await prisma.trainingCentre.create({
+          data: {
+            name: trainingCentreName?.trim() || `${name}'s Training Centre`,
+            code,
+            districtId: dist.id,
+          },
+        });
+        tcId = tc.id;
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: normalizedEmail,
+        passwordHash,
+        role: role as any,
+        trainingCentreId: tcId,
+        districtId: districtId || undefined,
+      },
+      include: { trainingCentre: true, district: true },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      userRole: user.role,
+      action: 'USER_LOGIN',
+      entityType: 'USER',
+      entityId: user.id,
+      metadata: { action: 'REGISTER' },
+    });
+
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      trainingCentreId: user.trainingCentreId,
+      districtId: user.districtId,
+    };
+
+    const accessToken = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '8h' } as any);
+    const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_REFRESH_SECRET || 'refresh-secret', { expiresIn: '7d' } as any);
+
+    const { passwordHash: _, ...userWithoutPassword } = user;
+    res.status(201).json({ accessToken, refreshToken, user: userWithoutPassword });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = loginSchema.parse(req.body);

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import API from '../lib/api';
 import toast from 'react-hot-toast';
-import { Upload, FileText, AlertCircle, CheckCircle, ChevronRight, X } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle, ChevronRight, X, ArrowRight } from 'lucide-react';
 
 interface District {
   id: string;
@@ -59,7 +59,7 @@ export default function NewBatchPage() {
     try {
       const { data } = await API.post('/batches', { courseName, batchName, districtId, notes });
       setBatchId(data.id);
-      toast.success('Batch created! Now upload the candidate Excel file.');
+      toast.success('Batch registered! Now upload the candidate Excel file.');
       setStep('upload');
     } catch (err: any) {
       toast.error(err.response?.data?.error || err.response?.data?.details?.[0]?.message || 'Failed to create batch');
@@ -85,7 +85,7 @@ export default function NewBatchPage() {
       });
       setUploadResult(data);
       if (data.valid) {
-        toast.success(`${data.candidateCount} candidates uploaded successfully!`);
+        toast.success(`${data.candidateCount} candidates validated successfully!`);
         setStep('review');
       }
     } catch (err: any) {
@@ -115,78 +115,113 @@ export default function NewBatchPage() {
   };
 
   return (
-    <div className="animate-fade-in" style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+    <div className="animate-fade-in" style={{ padding: '24px 32px', maxWidth: '880px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '13px', marginBottom: '8px' }}>
-          <span style={{ cursor: 'pointer', color: 'var(--accent)' }} onClick={() => navigate('/batches')}>Batches</span>
-          <ChevronRight size={12} />
-          <span>New Batch</span>
+      <div style={{ marginBottom: '28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '13px', marginBottom: '8px' }}>
+          <span style={{ cursor: 'pointer', color: '#2563eb', fontWeight: 500 }} onClick={() => navigate('/batches')}>Batches</span>
+          <ChevronRight size={14} />
+          <span style={{ color: '#0f172a', fontWeight: 600 }}>New Batch Creation</span>
         </div>
-        <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Create New Batch</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Upload a candidate list for approval and certification.</p>
+        <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a' }}>Upload Candidate Batch</h1>
+        <p style={{ color: '#64748b', fontSize: '14px' }}>
+          Pragati Skills Mission · Multi-tier validated candidate submission
+        </p>
       </div>
 
-      {/* Step indicator */}
-      <div style={{ display: 'flex', gap: '0', marginBottom: '32px' }}>
-        {(['info', 'upload', 'review'] as const).map((s, i) => (
-          <div key={s} style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '8px', flex: 1,
-              paddingBottom: '12px',
-              borderBottom: `2px solid ${step === s ? 'var(--primary)' : i < ['info', 'upload', 'review'].indexOf(step) ? 'var(--success)' : 'var(--border)'}`
+      {/* Step Indicators */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
+        {(['info', 'upload', 'review'] as const).map((s, i) => {
+          const isActive = step === s;
+          const isPassed = ['info', 'upload', 'review'].indexOf(step) > i;
+          return (
+            <div key={s} style={{
+              flex: 1,
+              padding: '12px 16px',
+              borderRadius: '12px',
+              background: isActive ? '#eff6ff' : isPassed ? '#ecfdf5' : '#f8fafc',
+              border: `1px solid ${isActive ? '#bfdbfe' : isPassed ? '#a7f3d0' : '#e2e8f0'}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
             }}>
               <div style={{
-                width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                background: step === s ? 'var(--primary)' : i < ['info', 'upload', 'review'].indexOf(step) ? 'var(--success)' : 'var(--bg-card)',
-                border: `2px solid ${step === s ? 'var(--primary)' : i < ['info', 'upload', 'review'].indexOf(step) ? 'var(--success)' : 'var(--border)'}`,
+                width: '28px', height: '28px', borderRadius: '50%',
+                background: isActive ? '#2563eb' : isPassed ? '#059669' : '#cbd5e1',
+                color: '#ffffff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '12px', fontWeight: 700, color: step === s || i < ['info', 'upload', 'review'].indexOf(step) ? 'white' : 'var(--text-muted)'
+                fontSize: '12px', fontWeight: 700
               }}>
-                {i < ['info', 'upload', 'review'].indexOf(step) ? '✓' : i + 1}
+                {isPassed ? '✓' : i + 1}
               </div>
-              <span style={{ fontSize: '13px', fontWeight: step === s ? 600 : 400, color: step === s ? 'var(--text)' : 'var(--text-muted)' }}>
-                {s === 'info' ? 'Batch Info' : s === 'upload' ? 'Upload File' : 'Review & Submit'}
-              </span>
+              <div>
+                <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Step {i + 1}
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: isActive ? '#1e40af' : isPassed ? '#065f46' : '#64748b' }}>
+                  {s === 'info' ? 'Batch Details' : s === 'upload' ? 'Upload Spreadsheet' : 'Review & Submit'}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Step 1: Batch Info */}
       {step === 'info' && (
-        <div className="glass-card" style={{ padding: '32px' }}>
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '16px',
+          padding: '32px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+        }}>
           <form onSubmit={handleCreateBatch}>
             <div className="form-group">
-              <label className="form-label">Batch Name *</label>
-              <input className="form-input" placeholder="e.g., Basic IT Skills – Batch 2024-01" value={batchName} onChange={(e) => setBatchName(e.target.value)} required />
+              <label className="form-label" style={{ fontWeight: 600 }}>Batch Name *</label>
+              <input
+                className="form-input"
+                placeholder="e.g., Solar PV Installation &amp; Maintenance – Batch 2024-06"
+                value={batchName}
+                onChange={(e) => setBatchName(e.target.value)}
+                required
+              />
             </div>
             <div className="form-group">
-              <label className="form-label">Course Name *</label>
-              <input className="form-input" placeholder="e.g., Basic Computer Skills" value={courseName} onChange={(e) => setCourseName(e.target.value)} required />
+              <label className="form-label" style={{ fontWeight: 600 }}>Course Name *</label>
+              <input
+                className="form-input"
+                placeholder="e.g., Solar PV Technician (NSQF Level 4)"
+                value={courseName}
+                onChange={(e) => setCourseName(e.target.value)}
+                required
+              />
             </div>
             <div className="form-group">
-              <label className="form-label">District *</label>
+              <label className="form-label" style={{ fontWeight: 600 }}>District Jurisdiction *</label>
               <select className="form-input" value={districtId} onChange={(e) => setDistrictId(e.target.value)} required>
-                <option value="">Select district...</option>
+                <option value="">Select District...</option>
                 {districts.map((d: District) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
-              {districts.length === 0 && (
-                <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Loading districts...
-                </div>
-              )}
             </div>
             <div className="form-group">
-              <label className="form-label">Notes (optional)</label>
-              <textarea className="form-input" placeholder="Any additional notes..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+              <label className="form-label" style={{ fontWeight: 600 }}>Notes / Remarks (Optional)</label>
+              <textarea
+                className="form-input"
+                placeholder="Additional instructions or training batch batch notes..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+              />
             </div>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-              <button type="button" className="btn btn-ghost" onClick={() => navigate('/batches')}>Cancel</button>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '28px' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => navigate('/batches')}>
+                Cancel
+              </button>
               <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? '...' : 'Create Batch & Continue →'}
+                {loading ? 'Creating Batch...' : 'Proceed to Candidate Upload →'}
               </button>
             </div>
           </form>
@@ -196,78 +231,114 @@ export default function NewBatchPage() {
       {/* Step 2: Upload */}
       {step === 'upload' && (
         <div>
-          {/* Upload dropzone */}
+          {/* Dropzone Card */}
           <div
-            className="glass-card"
-            style={{ padding: '48px', textAlign: 'center', marginBottom: '24px', cursor: 'pointer', borderColor: isDragging ? 'var(--primary)' : undefined }}
+            style={{
+              background: isDragging ? '#eff6ff' : '#ffffff',
+              border: `2px dashed ${isDragging ? '#2563eb' : '#bfdbfe'}`,
+              borderRadius: '16px',
+              padding: '48px 32px',
+              textAlign: 'center',
+              marginBottom: '24px',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+            }}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFileUpload(f); }}
             onClick={() => fileRef.current?.click()}
           >
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }} />
-            <Upload size={48} color="var(--primary)" style={{ margin: '0 auto 16px' }} />
-            <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Drop your Excel/CSV file here</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>or click to browse · .xlsx, .xls, .csv accepted</div>
-            {fileName && <div style={{ marginTop: '12px', color: 'var(--accent)', fontSize: '13px' }}>📄 {fileName}</div>}
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%', background: '#eff6ff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'
+            }}>
+              <Upload size={32} color="#2563eb" />
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>
+              Upload Candidate Spreadsheet
+            </div>
+            <div style={{ color: '#64748b', fontSize: '14px', maxWidth: '400px', margin: '0 auto' }}>
+              Drag and drop your Excel (.xlsx, .xls) or CSV file here, or click to browse
+            </div>
+            {fileName && (
+              <div style={{ marginTop: '16px', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '8px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', fontSize: '13px', fontWeight: 600 }}>
+                📄 {fileName}
+              </div>
+            )}
           </div>
 
-          {/* Loading */}
+          {/* Validating indicator */}
           {loading && (
-            <div className="alert alert-info" style={{ marginBottom: '16px' }}>
+            <div className="alert alert-info" style={{ marginBottom: '20px' }}>
               <span className="animate-spin">⟳</span>
-              <span>Validating {fileName}...</span>
+              <span>Running atomic validation on {fileName}... Verifying duplicate IDs, phone formats, and marks.</span>
             </div>
           )}
 
-          {/* Validation Results */}
+          {/* Validation Errors Table */}
           {uploadResult && !uploadResult.valid && (
-            <div className="glass-card" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <AlertCircle size={20} color="#ef4444" />
-                <h3 style={{ color: '#ef4444', fontSize: '16px', fontWeight: 700 }}>
-                  Upload Rejected – {uploadResult.errors?.length} Error(s) Found
-                </h3>
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #fecaca',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                <AlertCircle size={22} color="#dc2626" />
+                <div>
+                  <h3 style={{ color: '#991b1b', fontSize: '16px', fontWeight: 800 }}>
+                    Upload Rejected: {uploadResult.errors?.length} Error(s) Found
+                  </h3>
+                  <div style={{ color: '#64748b', fontSize: '13px' }}>
+                    Every candidate record must pass strict validation before the batch can be submitted.
+                  </div>
+                </div>
               </div>
-              <div className="alert alert-error" style={{ marginBottom: '16px' }}>
-                All errors must be corrected before the batch can be accepted. Fix the spreadsheet and re-upload.
-              </div>
-              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+
+              <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
                 <table className="table">
                   <thead>
                     <tr>
                       <th>Row</th>
                       <th>Field</th>
-                      <th>Value</th>
-                      <th>Error</th>
-                      <th>Suggestion</th>
+                      <th>Provided Value</th>
+                      <th>Validation Failure</th>
+                      <th>Recommended Fix</th>
                     </tr>
                   </thead>
                   <tbody>
                     {uploadResult.errors?.map((err, i) => (
                       <tr key={i}>
-                        <td style={{ fontWeight: 700, color: '#ef4444' }}>{err.row}</td>
-                        <td style={{ fontWeight: 600 }}>{err.field}</td>
-                        <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '12px' }}>{String(err.value ?? '—')}</td>
-                        <td style={{ color: '#f87171', fontSize: '12px' }}>{err.error}</td>
-                        <td style={{ color: '#34d399', fontSize: '12px' }}>{err.suggestion}</td>
+                        <td style={{ fontWeight: 800, color: '#dc2626' }}>{err.row}</td>
+                        <td style={{ fontWeight: 600, color: '#0f172a' }}>{err.field}</td>
+                        <td style={{ color: '#64748b', fontFamily: 'monospace', fontSize: '12px' }}>{String(err.value ?? '—')}</td>
+                        <td style={{ color: '#dc2626', fontSize: '12px', fontWeight: 500 }}>{err.error}</td>
+                        <td style={{ color: '#059669', fontSize: '12px', fontWeight: 500 }}>{err.suggestion}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div style={{ marginTop: '16px' }}>
+
+              <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
                 <button className="btn btn-primary" onClick={() => fileRef.current?.click()}>
-                  <Upload size={14} /> Re-upload Corrected File
+                  <Upload size={14} /> Re-upload Corrected Spreadsheet
                 </button>
               </div>
             </div>
           )}
 
+          {/* Validation Success Banner */}
           {uploadResult?.valid && (
-            <div className="alert alert-success">
-              <CheckCircle size={16} />
-              <span><strong>{uploadResult.candidateCount} candidates</strong> validated successfully. {uploadResult.isLargeBatch ? '⚠ Large batch – quality review required.' : ''} Click Continue to review.</span>
+            <div className="alert alert-success" style={{ marginBottom: '20px' }}>
+              <CheckCircle size={18} />
+              <span>
+                <strong>{uploadResult.candidateCount} candidate records</strong> validated successfully!
+                {uploadResult.isLargeBatch ? ' ⚠ Large batch (&gt;50) detected – requires mandatory Quality Team review.' : ''}
+              </span>
             </div>
           )}
         </div>
@@ -275,41 +346,52 @@ export default function NewBatchPage() {
 
       {/* Step 3: Review & Submit */}
       {step === 'review' && (
-        <div className="glass-card" style={{ padding: '32px' }}>
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <CheckCircle size={24} color="#10b981" />
-              <h3 style={{ fontSize: '18px', fontWeight: 700 }}>Ready to Submit</h3>
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '16px',
+          padding: '32px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+            <CheckCircle size={24} color="#059669" />
+            <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>Ready to Submit for Approval</h3>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Batch Name</div>
+              <div style={{ fontWeight: 700, color: '#0f172a' }}>{batchName}</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div style={{ padding: '16px', background: 'rgba(15,23,42,0.5)', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Batch Name</div>
-                <div style={{ fontWeight: 600 }}>{batchName}</div>
-              </div>
-              <div style={{ padding: '16px', background: 'rgba(15,23,42,0.5)', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Candidates</div>
-                <div style={{ fontWeight: 600 }}>{uploadResult?.candidateCount}</div>
-              </div>
-              <div style={{ padding: '16px', background: 'rgba(15,23,42,0.5)', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Course</div>
-                <div style={{ fontWeight: 600 }}>{courseName}</div>
-              </div>
-              <div style={{ padding: '16px', background: 'rgba(15,23,42,0.5)', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Large Batch?</div>
-                <div style={{ fontWeight: 600 }}>{uploadResult?.isLargeBatch ? 'Yes (Quality review required)' : 'No'}</div>
+            <div style={{ padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Candidate Count</div>
+              <div style={{ fontWeight: 700, color: '#0f172a' }}>{uploadResult?.candidateCount} candidates</div>
+            </div>
+            <div style={{ padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Course</div>
+              <div style={{ fontWeight: 700, color: '#0f172a' }}>{courseName}</div>
+            </div>
+            <div style={{ padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Batch Scale</div>
+              <div style={{ fontWeight: 700, color: uploadResult?.isLargeBatch ? '#b45309' : '#059669' }}>
+                {uploadResult?.isLargeBatch ? 'Large Batch (Quality Review Needed)' : 'Standard Batch'}
               </div>
             </div>
           </div>
 
           <div className="alert alert-info" style={{ marginBottom: '24px' }}>
-            <FileText size={14} />
-            <span>Submitting will start the district officer approval process. Two district officers must approve before the batch advances.</span>
+            <FileText size={16} />
+            <span>
+              Submitting this batch locks candidate records and dispatches it to the District Officer pool. <strong>Dual officer consensus</strong> is required before advancing.
+            </span>
           </div>
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <button className="btn btn-ghost" onClick={() => setStep('upload')}>← Re-upload</button>
+            <button className="btn btn-secondary" onClick={() => setStep('upload')}>
+              ← Back to File
+            </button>
             <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-              {loading ? '...' : '✓ Submit for Approval'}
+              {loading ? 'Submitting...' : '✓ Submit Batch to District Pool'}
             </button>
           </div>
         </div>

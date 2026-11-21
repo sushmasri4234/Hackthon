@@ -1,19 +1,30 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import API from '../lib/api';
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
   role: string;
-  trainingCentre?: { id: string; name: string; code: string } | null;
-  district?: { id: string; name: string } | null;
+  trainingCentre?: { id?: string; name: string; code?: string } | null;
+  district?: { id?: string; name: string } | null;
+}
+
+export interface RegisterPayload {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  districtId?: string;
+  trainingCentreName?: string;
+  trainingCentreCode?: string;
 }
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   switchUser: (email: string) => Promise<void>;
 }
@@ -46,6 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   };
 
+  const register = async (payload: RegisterPayload) => {
+    const { data } = await API.post('/auth/register', payload);
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    setUser(data.user);
+  };
+
   const logout = async () => {
     try { await API.post('/auth/logout'); } catch {}
     localStorage.clear();
@@ -59,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, switchUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, switchUser }}>
       {children}
     </AuthContext.Provider>
   );

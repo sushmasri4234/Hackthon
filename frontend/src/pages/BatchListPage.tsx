@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import API from '../lib/api';
-import { FileText, Search, Filter, ChevronRight } from 'lucide-react';
+import { FileText, Search, Filter, ChevronRight, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_BADGE_MAP: Record<string, string> = {
@@ -36,7 +36,7 @@ export default function BatchListPage() {
       const params: Record<string, string> = { page: String(page), limit: '20' };
       if (statusFilter) params.status = statusFilter;
       const { data } = await API.get('/batches', { params });
-      setBatches(data.data);
+      setBatches(data.data || data);
       setPagination(data.pagination);
     } catch {}
     finally { setLoading(false); }
@@ -47,48 +47,54 @@ export default function BatchListPage() {
   );
 
   return (
-    <div className="animate-fade-in" style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="animate-fade-in" style={{ padding: '24px 32px', maxWidth: '1280px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Batches</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-            {user?.role === 'TRAINING_CENTRE' ? 'Your submitted candidate batches' : 'All candidate batches in the system'}
+          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Batches Directory</h1>
+          <p style={{ color: '#64748b', fontSize: '14px' }}>
+            {user?.role === 'TRAINING_CENTRE' ? 'Your centre’s uploaded and tracked candidate batches' : 'All skilling batches across Pragati Skills Mission'}
           </p>
         </div>
         {user?.role === 'TRAINING_CENTRE' && (
           <button className="btn btn-primary" onClick={() => navigate('/batches/new')}>
-            <FileText size={14} /> New Batch
+            <Plus size={16} /> Create New Batch
           </button>
         )}
       </div>
 
-      {/* Filters */}
+      {/* Filters Bar */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
         <div style={{ flex: 1, position: 'relative' }}>
-          <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
+          <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input
             className="form-input"
-            style={{ paddingLeft: '36px' }}
-            placeholder="Search batches..."
+            style={{ paddingLeft: '40px' }}
+            placeholder="Search by batch title, course name or centre..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select className="form-input" style={{ width: '180px' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select className="form-input" style={{ width: '200px' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All Statuses</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>
 
-      {/* Table */}
-      <div className="glass-card" style={{ overflow: 'hidden' }}>
+      {/* Table Card */}
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+      }}>
         {loading ? (
-          <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+          <div style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>Loading batches...</div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: '48px', textAlign: 'center' }}>
-            <FileText size={48} style={{ opacity: 0.2, margin: '0 auto 12px', display: 'block' }} />
-            <div style={{ color: 'var(--text-muted)' }}>No batches found</div>
+            <FileText size={48} style={{ opacity: 0.25, color: '#94a3b8', margin: '0 auto 12px', display: 'block' }} />
+            <div style={{ color: '#64748b', fontWeight: 500 }}>No batches found</div>
             {user?.role === 'TRAINING_CENTRE' && (
               <button className="btn btn-primary" style={{ marginTop: '16px' }} onClick={() => navigate('/batches/new')}>
                 Create First Batch
@@ -99,48 +105,59 @@ export default function BatchListPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Batch Name</th>
+                <th>Batch Information</th>
                 <th>Training Centre</th>
                 <th>District</th>
                 <th>Candidates</th>
                 <th>Status</th>
-                <th>Updated</th>
-                <th></th>
+                <th>Created Date</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((b) => (
-                <tr key={b.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/batches/${b.id}`)}>
+                <tr key={b.id}>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{b.batchName}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{b.courseName}</div>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{b.batchName}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{b.courseName}</div>
                   </td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{b.trainingCentre?.name}</td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{b.district?.name}</td>
+                  <td style={{ fontSize: '13px', color: '#334155' }}>
+                    {b.trainingCentre?.name || 'Skill Centre'}
+                  </td>
+                  <td style={{ fontSize: '13px', color: '#64748b' }}>
+                    {b.district?.name || 'Pune'}
+                  </td>
                   <td>
-                    <span style={{ fontWeight: 600 }}>{b._count?.candidates ?? b.totalCandidates}</span>
-                    {b.isLargeBatch && <span className="badge badge-warning" style={{ marginLeft: '6px', fontSize: '9px' }}>LARGE</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontWeight: 700, color: '#0f172a' }}>{b.totalCandidates}</span>
+                      {b.isLargeBatch && (
+                        <span className="badge badge-warning" style={{ fontSize: '10px' }}>&gt;50</span>
+                      )}
+                    </div>
                   </td>
-                  <td><span className={`badge ${STATUS_BADGE_MAP[b.status] || 'badge-draft'}`}>{STATUS_LABELS[b.status] || b.status}</span></td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                    {b.updatedAt ? format(new Date(b.updatedAt), 'dd MMM yyyy, HH:mm') : '—'}
+                  <td>
+                    <span className={`badge ${STATUS_BADGE_MAP[b.status] || 'badge-draft'}`}>
+                      {STATUS_LABELS[b.status] || b.status}
+                    </span>
                   </td>
-                  <td><ChevronRight size={14} color="var(--text-dim)" /></td>
+                  <td style={{ fontSize: '12px', color: '#64748b' }}>
+                    {b.createdAt ? format(new Date(b.createdAt), 'dd MMM yyyy') : '—'}
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      onClick={() => navigate(`/batches/${b.id}`)}
+                    >
+                      View Details
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
-
-      {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '16px' }}>
-          <button className="btn btn-ghost" disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-          <span style={{ padding: '8px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>Page {page} of {pagination.totalPages}</span>
-          <button className="btn btn-ghost" disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
-        </div>
-      )}
     </div>
   );
 }

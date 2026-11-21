@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/api';
-import { Shield, Search, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Shield, Search, CheckCircle, XCircle, AlertCircle, ArrowLeft, Award, Calendar, Building, MapPin } from 'lucide-react';
+import { format } from 'date-fns';
 
 export default function VerifyPage() {
   const navigate = useNavigate();
@@ -10,18 +11,18 @@ export default function VerifyPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!certNumber.trim()) return;
+  const handleVerify = async (e?: React.FormEvent, customId?: string) => {
+    if (e) e.preventDefault();
+    const idToVerify = (customId || certNumber).trim().toUpperCase();
+    if (!idToVerify) return;
     setLoading(true);
     setResult(null);
     setError('');
     try {
-      const { data } = await API.get(`/verify/${certNumber.trim().toUpperCase()}`);
+      const { data } = await API.get(`/verify/${idToVerify}`);
       setResult(data);
-      navigate(`/verify/${certNumber.trim().toUpperCase()}`, { state: data });
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Verification failed');
+      setError(err.response?.data?.error || 'Verification query failed. Please check the ID.');
     } finally {
       setLoading(false);
     }
@@ -30,34 +31,58 @@ export default function VerifyPage() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', padding: '24px', background: 'var(--bg)',
-      backgroundImage: 'radial-gradient(ellipse at top, rgba(26,86,219,0.1) 0%, transparent 50%)'
+      justifyContent: 'center', padding: '32px 20px', background: '#f8fafc',
+      backgroundImage: 'radial-gradient(circle at 50% 10%, #eff6ff 0%, #f8fafc 70%)'
     }}>
+      {/* Return Button */}
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="btn btn-secondary"
+        style={{ position: 'fixed', top: '24px', left: '24px', display: 'flex', alignItems: 'center', gap: '6px' }}
+      >
+        <ArrowLeft size={16} /> Back to Dashboard
+      </button>
+
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '36px', maxWidth: '600px' }}>
         <div style={{
-          width: '72px', height: '72px', borderRadius: '50%', margin: '0 auto 20px',
-          background: 'linear-gradient(135deg, #1a56db, #0ea5e9)',
+          width: '68px', height: '68px', borderRadius: '18px', margin: '0 auto 16px',
+          background: 'linear-gradient(135deg, #2563eb, #38bdf8)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 12px 32px rgba(26,86,219,0.4)'
+          boxShadow: '0 8px 16px rgba(37, 99, 235, 0.2)'
         }}>
-          <Shield size={32} color="white" />
+          <Shield size={34} color="#ffffff" />
         </div>
-        <h1 style={{ fontSize: '32px', fontWeight: 800, marginBottom: '8px' }}>Certificate Verification</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>
-          Pragati Skills Mission · Verify certificate authenticity instantly
+        <div style={{ fontSize: '12px', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+          Pragati Skills Mission · Government of India
+        </div>
+        <h1 style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>
+          Official Certificate Verification
+        </h1>
+        <p style={{ color: '#64748b', fontSize: '15px', lineHeight: 1.5 }}>
+          Verify the authenticity and current active status of candidate skilling certificates issued under the Mission.
         </p>
       </div>
 
-      {/* Search Box */}
-      <div className="glass-card" style={{ width: '100%', maxWidth: '520px', padding: '32px' }}>
+      {/* Verification Card */}
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '20px',
+        width: '100%',
+        maxWidth: '560px',
+        padding: '36px',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)'
+      }}>
         <form onSubmit={handleVerify}>
-          <div className="form-group">
-            <label className="form-label" style={{ fontSize: '14px' }}>Certificate Number</label>
+          <div className="form-group" style={{ marginBottom: '18px' }}>
+            <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#0f172a' }}>
+              Certificate ID / QR Code Number
+            </label>
             <input
               className="form-input"
-              style={{ fontSize: '16px', textTransform: 'uppercase', letterSpacing: '1px', padding: '14px 16px' }}
-              placeholder="e.g., PSM-2024-12345678"
+              style={{ fontSize: '16px', textTransform: 'uppercase', letterSpacing: '1.2px', padding: '14px 16px', fontWeight: 600 }}
+              placeholder="e.g., PSM-2026-XXXXXXXX"
               value={certNumber}
               onChange={(e) => setCertNumber(e.target.value)}
               autoFocus
@@ -67,74 +92,130 @@ export default function VerifyPage() {
             type="submit"
             className="btn btn-primary"
             disabled={loading || !certNumber.trim()}
-            style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '15px' }}
+            style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: '15px', fontWeight: 700 }}
           >
-            {loading ? <span className="animate-spin">⟳</span> : <Search size={16} />}
-            {loading ? 'Verifying...' : 'Verify Certificate'}
+            {loading ? <span className="animate-spin">⟳</span> : <Search size={18} />}
+            {loading ? 'Querying Blockchain Registry...' : 'Verify Certificate Authenticity'}
           </button>
         </form>
 
+        {/* Error message */}
         {error && (
-          <div className="alert alert-error" style={{ marginTop: '16px' }}>
-            <AlertCircle size={14} /> {error}
+          <div className="alert alert-error" style={{ marginTop: '20px' }}>
+            <AlertCircle size={16} /> <span>{error}</span>
           </div>
         )}
 
+        {/* Verification Results */}
         {result && (
-          <div style={{ marginTop: '24px' }}>
+          <div style={{ marginTop: '28px' }}>
             {result.status === 'VALID' && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(5,150,105,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CheckCircle size={24} color="#10b981" />
+                {/* Valid Banner */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '14px',
+                  background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px',
+                  padding: '16px 20px', marginBottom: '20px'
+                }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckCircle size={24} color="#059669" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: '16px', color: '#10b981' }}>✓ Certificate is Valid</div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>This certificate is authentic and currently active</div>
+                    <div style={{ fontWeight: 800, fontSize: '16px', color: '#065f46' }}>✓ Authentic &amp; Active Certificate</div>
+                    <div style={{ fontSize: '12px', color: '#047857' }}>This credential is valid and registered with the state skills registry</div>
                   </div>
                 </div>
-                <div style={{ background: 'rgba(5,150,105,0.05)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: '8px', padding: '16px' }}>
-                  {[
-                    { label: 'Certificate No.', value: result.certificateNumber },
-                    { label: 'Holder', value: result.holder },
-                    { label: 'Course', value: result.course },
-                    { label: 'Training Centre', value: result.trainingCentre },
-                    { label: 'District', value: result.district },
-                    { label: 'Completion Date', value: result.completionDate ? new Date(result.completionDate).toLocaleDateString('en-IN') : '—' },
-                  ].map(({ label, value }) => (
-                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(5,150,105,0.1)', fontSize: '13px' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-                      <span style={{ fontWeight: 600 }}>{value}</span>
-                    </div>
-                  ))}
+
+                {/* Candidate Credential Info Card (Privacy Preserving: No phone, no email) */}
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #e2e8f0' }}>
+                    <span style={{ color: '#64748b', fontSize: '13px' }}>Certificate Number</span>
+                    <span style={{ fontWeight: 800, color: '#1e40af', fontFamily: 'monospace', fontSize: '14px' }}>
+                      {result.certificateNumber}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #e2e8f0' }}>
+                    <span style={{ color: '#64748b', fontSize: '13px' }}>Certificate Holder</span>
+                    <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '14px' }}>
+                      {result.holder}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #e2e8f0' }}>
+                    <span style={{ color: '#64748b', fontSize: '13px' }}>Course / Qualification</span>
+                    <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '13px' }}>
+                      {result.course}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #e2e8f0' }}>
+                    <span style={{ color: '#64748b', fontSize: '13px' }}>Training Centre</span>
+                    <span style={{ fontWeight: 500, color: '#334155', fontSize: '13px' }}>
+                      {result.trainingCentre}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #e2e8f0' }}>
+                    <span style={{ color: '#64748b', fontSize: '13px' }}>District</span>
+                    <span style={{ fontWeight: 500, color: '#334155', fontSize: '13px' }}>
+                      {result.district}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px' }}>
+                    <span style={{ color: '#64748b', fontSize: '13px' }}>Completion Date</span>
+                    <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '13px' }}>
+                      {result.completionDate ? format(new Date(result.completionDate), 'dd MMMM yyyy') : '—'}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '16px', fontSize: '11px', color: '#94a3b8', textAlign: 'center' }}>
+                  🔒 Verified via SHA-256 digital signature · Candidate contact data withheld per Digital Personal Data Protection Act
                 </div>
               </div>
             )}
+
             {result.status === 'CANCELLED' && (
-              <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: '8px', padding: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <XCircle size={24} color="#ef4444" />
-                  <span style={{ fontWeight: 700, fontSize: '16px', color: '#ef4444' }}>Certificate Cancelled</span>
+              <div style={{
+                background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '14px',
+                padding: '24px', textAlign: 'center'
+              }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <XCircle size={30} color="#dc2626" />
                 </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>This certificate was previously issued but has been revoked by the state office.</p>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#991b1b', marginBottom: '6px' }}>
+                  Certificate Revoked / Cancelled
+                </h3>
+                <p style={{ color: '#b91c1c', fontSize: '13px', marginBottom: '16px' }}>
+                  {result.message}
+                </p>
+                {result.reason && (
+                  <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #fca5a5', color: '#7f1d1d', fontSize: '12px', fontStyle: 'italic', marginBottom: '12px' }}>
+                    Revocation Reason: "{result.reason}"
+                  </div>
+                )}
+                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  Revoked on: {result.cancelledAt ? format(new Date(result.cancelledAt), 'dd MMM yyyy, HH:mm') : '—'}
+                </div>
               </div>
             )}
+
             {result.status === 'INVALID' && (
-              <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: '8px', padding: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <AlertCircle size={24} color="#ef4444" />
-                  <span style={{ fontWeight: 700, fontSize: '16px', color: '#ef4444' }}>Certificate Not Found</span>
+              <div style={{
+                background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '14px',
+                padding: '24px', textAlign: 'center'
+              }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <AlertCircle size={30} color="#ea580c" />
                 </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>This certificate ID does not exist in our records. It may be forged or incorrectly entered.</p>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#9a3412', marginBottom: '6px' }}>
+                  Certificate Not Found
+                </h3>
+                <p style={{ color: '#c2410c', fontSize: '13px' }}>
+                  No matching record exists for this Certificate ID in the Pragati Skills Mission registry.
+                </p>
               </div>
             )}
           </div>
         )}
       </div>
-
-      <p style={{ marginTop: '24px', color: 'var(--text-dim)', fontSize: '12px', textAlign: 'center' }}>
-        No login required · Your certificate ID is printed on the certificate · Scan the QR code for instant verification
-      </p>
     </div>
   );
 }
